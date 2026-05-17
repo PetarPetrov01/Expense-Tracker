@@ -1,0 +1,24 @@
+import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
+
+export const categories = sqliteTable('categories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  icon: text('icon').notNull(),
+  color: text('color').notNull(),
+  isSeed: integer('is_seed', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+export const expenses = sqliteTable('expenses', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  amountCents: integer('amount_cents').notNull(),
+  categoryId: integer('category_id').notNull().references(() => categories.id),
+  note: text('note'),
+  occurredAt: integer('occurred_at', { mode: 'timestamp_ms' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+export type Category = typeof categories.$inferSelect;
+export type NewCategory = typeof categories.$inferInsert;
+export type Expense = typeof expenses.$inferSelect;
+export type NewExpense = typeof expenses.$inferInsert;

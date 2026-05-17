@@ -15,5 +15,10 @@ export default function RootLayout() {
   if (error) return <View><Text>Migration error: {error.message}</Text></View>;
   if (!success || !seeded) return <View><Text>Loading…</Text></View>;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="expense/new" options={{ presentation: 'modal', headerShown: true, title: 'New expense' }} />
+    </Stack>
+  );
 }

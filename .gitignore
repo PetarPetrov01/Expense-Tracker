@@ -40,4 +40,10 @@ app-example
 
 # generated native folders
 /ios
+
+# Native android (regenerable via `expo prebuild`)
 /android
+
+# Local-only signing material — never commit
+/android/keystores/
+/android/gradle.properties

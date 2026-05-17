@@ -1,17 +1,16 @@
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { Text, View } from 'react-native';
+import { useRunMigrations } from '../src/db/migrate';
 
 export default function RootLayout() {
-  return (
-    <>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </>
-  );
+  const { success, error } = useRunMigrations();
+
+  if (error) {
+    return <View><Text>Migration error: {error.message}</Text></View>;
+  }
+  if (!success) {
+    return <View><Text>Setting up database…</Text></View>;
+  }
+
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

@@ -10,7 +10,7 @@ import { theme } from '../theme';
 export function ExpenseRow({ e }: { e: ExpenseWithCategory }) {
   const currency = useSettings(s => s.currency);
   return (
-    <Link href={`/expense/${e.id}` as any} asChild>
+    <Link href={`/expense/${e.id}`} asChild>
       <Pressable style={{
         flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md,
         padding: theme.spacing.md, backgroundColor: theme.colors.surface,

@@ -8,6 +8,14 @@ export type Bar = { label: string; valueCents: number };
 
 export function PeriodBarChart({ bars, title }: { bars: Bar[]; title: string }) {
   const currency = useSettings(s => s.currency);
+  if (bars.length === 0) {
+    return (
+      <View style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md }}>
+        <Text style={{ color: theme.colors.text, fontSize: 16, marginBottom: theme.spacing.sm }}>{title}</Text>
+        <Text style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.lg }}>No data in this range.</Text>
+      </View>
+    );
+  }
   const maxC = Math.max(1, ...bars.map(b => b.valueCents));
   const data = bars.map(b => ({
     value: b.valueCents / 100,

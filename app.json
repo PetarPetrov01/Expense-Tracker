@@ -8,7 +8,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "android": {
-      "package": "com.craftberry.expensetracker",
+      "package": "com.expensetracker.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#10b981"

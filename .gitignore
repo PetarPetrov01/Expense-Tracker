@@ -47,3 +47,4 @@ app-example
 # Local-only signing material — never commit
 /android/keystores/
 /android/gradle.properties
+/.local-signing-backup/

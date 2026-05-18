@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
+import { eq } from 'drizzle-orm';
 import { AmountInput } from '../../src/components/AmountInput';
 import { DateField } from '../../src/components/DateField';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { CategoryPickerSheet } from '../../src/components/CategoryPickerSheet';
 import { parseAmountToCents } from '../../src/lib/currency';
 import { createExpense } from '../../src/repositories/expenses';
-import type { Category } from '../../src/db/schema';
+import { db } from '../../src/db/client';
+import { categories as categoriesTable, type Category } from '../../src/db/schema';
+import { useSettings } from '../../src/stores/settings';
 import { theme } from '../../src/theme';
 
 export default function NewExpense() {
@@ -17,11 +20,23 @@ export default function NewExpense() {
   const [date, setDate] = useState(new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  const lastUsedCategoryId = useSettings(s => s.lastUsedCategoryId);
+  const setLastUsedCategoryId = useSettings(s => s.setLastUsedCategoryId);
+
+  useEffect(() => {
+    if (!lastUsedCategoryId || category) return;
+    (async () => {
+      const rows = await db.select().from(categoriesTable).where(eq(categoriesTable.id, lastUsedCategoryId)).limit(1);
+      if (rows[0]) setCategory(rows[0]);
+    })();
+  }, [lastUsedCategoryId, category]);
+
   async function save() {
     const cents = parseAmountToCents(amount);
     if (cents === null || cents <= 0) return Alert.alert('Invalid amount');
     if (!category) return Alert.alert('Pick a category');
     await createExpense({ amountCents: cents, categoryId: category.id, note: note || null, occurredAt: date });
+    setLastUsedCategoryId(category.id);
     router.back();
   }
 

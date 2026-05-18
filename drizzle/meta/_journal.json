@@ -8,6 +8,13 @@
       "when": 1779037033881,
       "tag": "0000_needy_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779127731244,
+      "tag": "0001_cheerful_nighthawk",
+      "breakpoints": true
     }
   ]
 }

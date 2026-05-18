@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import { eq } from 'drizzle-orm';
 import { AmountInput } from '../../src/components/AmountInput';
 import { DateField } from '../../src/components/DateField';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { CategoryPickerSheet } from '../../src/components/CategoryPickerSheet';
 import { parseAmountToCents } from '../../src/lib/currency';
 import { createExpense } from '../../src/repositories/expenses';
-import { db } from '../../src/db/client';
-import { categories as categoriesTable, type Category } from '../../src/db/schema';
+import { getCategory } from '../../src/repositories/categories';
+import type { Category } from '../../src/db/schema';
 import { useSettings } from '../../src/stores/settings';
 import { theme } from '../../src/theme';
 
@@ -26,8 +25,8 @@ export default function NewExpense() {
   useEffect(() => {
     if (!lastUsedCategoryId || category) return;
     (async () => {
-      const rows = await db.select().from(categoriesTable).where(eq(categoriesTable.id, lastUsedCategoryId)).limit(1);
-      if (rows[0]) setCategory(rows[0]);
+      const row = await getCategory(lastUsedCategoryId);
+      if (row) setCategory(row);
     })();
   }, [lastUsedCategoryId, category]);
 

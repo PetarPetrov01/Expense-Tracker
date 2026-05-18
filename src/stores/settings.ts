@@ -36,10 +36,12 @@ export const useSettings = create<State>((set) => ({
   },
   setCurrency: async (c) => {
     set({ currency: c });
-    await setSetting('currency', c);
+    try { await setSetting('currency', c); }
+    catch (e) { console.warn('[settings] persist currency failed', e); }
   },
   setLastUsedCategoryId: async (id) => {
     set({ lastUsedCategoryId: id });
-    await setSetting('lastUsedCategoryId', String(id));
+    try { await setSetting('lastUsedCategoryId', String(id)); }
+    catch (e) { console.warn('[settings] persist lastUsedCategoryId failed', e); }
   },
 }));

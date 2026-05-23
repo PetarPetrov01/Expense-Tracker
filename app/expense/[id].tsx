@@ -36,12 +36,12 @@ export default function EditExpense() {
       setAmount((found.amountCents / 100).toFixed(2));
       setNote(found.note ?? '');
       setDate(new Date(found.occurredAt));
-      // Defensive: the column is NOT NULL, but if somehow not a known code, fall back to display.
-      setEntryCurrency(isCurrencyCode(found.currency) ? found.currency : displayCurrency);
+      // currency column is NOT NULL — guard for hand-edited DBs only.
+      setEntryCurrency(isCurrencyCode(found.currency) ? found.currency : 'EUR');
       const cat = await getCategory(found.categoryId);
       if (cat) setCategory(cat);
     })();
-  }, [expenseId, displayCurrency]);
+  }, [expenseId]);
 
   async function save() {
     const cents = parseAmountToCents(amount);

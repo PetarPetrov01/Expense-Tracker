@@ -21,14 +21,16 @@ export async function upsertRates(
 ): Promise<void> {
   // Always force-pin BGN regardless of caller — defense in depth.
   const merged: Record<string, number> = { ...rates, BGN: BGN_PEGGED_RATE_X1E6 };
-  for (const [quote, rateX1e6] of Object.entries(merged)) {
-    await db.insert(schema.fxRates)
-      .values({ base: 'EUR', quote, rateX1e6, fetchedAt })
-      .onConflictDoUpdate({
-        target: [schema.fxRates.base, schema.fxRates.quote],
-        set: { rateX1e6, fetchedAt },
-      });
-  }
+  await db.transaction(async (tx) => {
+    for (const [quote, rateX1e6] of Object.entries(merged)) {
+      await tx.insert(schema.fxRates)
+        .values({ base: 'EUR', quote, rateX1e6, fetchedAt })
+        .onConflictDoUpdate({
+          target: [schema.fxRates.base, schema.fxRates.quote],
+          set: { rateX1e6, fetchedAt },
+        });
+    }
+  });
 }
 
 export async function seedBgnIfMissing(): Promise<void> {

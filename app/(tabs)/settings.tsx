@@ -35,6 +35,17 @@ export default function Settings() {
           <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.textMuted} />
         </Pressable>
       </Link>
+
+      <Link href="/settings/data" asChild>
+        <Pressable style={{
+          flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md,
+          padding: theme.spacing.md, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md,
+        }}>
+          <MaterialCommunityIcons name="database" size={24} color={theme.colors.text} />
+          <Text style={{ flex: 1, color: theme.colors.text, fontSize: 16 }}>Data (import / export)</Text>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.textMuted} />
+        </Pressable>
+      </Link>
     </View>
   );
 }

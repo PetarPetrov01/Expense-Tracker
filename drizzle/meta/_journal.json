@@ -15,6 +15,13 @@
       "when": 1779127731244,
       "tag": "0001_cheerful_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1779555235185,
+      "tag": "0002_nifty_arachne",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRunMigrations } from '../src/db/migrate';
 import { seedIfEmpty } from '../src/db/seed';
 import { useSettings } from '../src/stores/settings';
+import { theme } from '../src/theme';
 
 export default function RootLayout() {
   const { success, error } = useRunMigrations();
@@ -23,12 +24,19 @@ export default function RootLayout() {
   if (!success || !seeded || !settingsLoaded) return <View><Text>Loading…</Text></View>;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{
+      headerShown: false,
+      headerStyle: { backgroundColor: theme.colors.bg },
+      headerTintColor: theme.colors.text,
+      headerTitleStyle: { color: theme.colors.text },
+      contentStyle: { backgroundColor: theme.colors.bg },
+    }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="expense/new" options={{ presentation: 'modal', headerShown: true, title: 'New expense' }} />
       <Stack.Screen name="expense/[id]" options={{ presentation: 'modal', headerShown: true, title: 'Edit expense' }} />
       <Stack.Screen name="category/index" options={{ headerShown: true, title: 'Categories' }} />
       <Stack.Screen name="category/edit"  options={{ presentation: 'modal', headerShown: true, title: 'Edit category' }} />
+      <Stack.Screen name="settings/data" options={{ headerShown: true, title: 'Data' }} />
     </Stack>
   );
 }

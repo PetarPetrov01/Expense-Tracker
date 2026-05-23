@@ -1,21 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
-import { TextInput, View, Text } from 'react-native';
+import { TextInput, View, Text, Pressable } from 'react-native';
 import { theme } from '../theme';
-import { useSettings } from '../stores/settings';
 import { clampWhileTyping, padOnBlur } from '../lib/amountInput';
+import { CurrencyPickerSheet } from './CurrencyPickerSheet';
+import { codeToSymbol, type CurrencyCode } from '../lib/currency';
 
-// `value` is the canonical string the parent owns (post-pad form, e.g. "5.90").
-// Internally we keep a more permissive "draft" string so the user can transiently
-// have values like "5.", "5.9" while typing. We only emit cleaned values to the parent.
-export function AmountInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  // Display the parent's value; internal draft tracks the user's in-progress text.
+// Controlled component. Parent owns both the amount string and the entry currency.
+// On a new expense, parent should initialize `currency = displayCurrency`.
+// On an edit, parent should initialize `currency = expense.currency`.
+export function AmountInput({
+  value,
+  onChange,
+  currency,
+  onCurrencyChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  currency: CurrencyCode;
+  onCurrencyChange: (c: CurrencyCode) => void;
+}) {
   const [draft, setDraft] = useState(value);
   const lastParentValue = useRef(value);
-  // Currency symbol comes from displayCurrency once Phase 5 lands.
-  // For Phase 1 the existing settings shape is still { currency: CurrencySymbol }.
-  const currency = useSettings(s => s.displayCurrency);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
-  // If the parent supplies a new value (mount / route reload), normalize once.
   useEffect(() => {
     if (value !== lastParentValue.current) {
       lastParentValue.current = value;
@@ -37,9 +44,21 @@ export function AmountInput({ value, onChange }: { value: string; onChange: (v: 
   }
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface,
-      paddingHorizontal: theme.spacing.md, borderRadius: theme.radius.md }}>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 28, marginRight: 8 }}>{currency}</Text>
+    <View style={{
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: theme.spacing.md, borderRadius: theme.radius.md,
+    }}>
+      <Pressable onPress={() => setPickerOpen(true)} hitSlop={8} style={{ marginRight: 8 }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 4,
+          paddingHorizontal: 10, paddingVertical: 6, borderRadius: theme.radius.pill,
+          backgroundColor: theme.colors.bg,
+        }}>
+          <Text style={{ color: theme.colors.text, fontSize: 18 }}>{codeToSymbol(currency)}</Text>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{currency}</Text>
+        </View>
+      </Pressable>
       <TextInput
         value={draft}
         onChangeText={handleChangeText}
@@ -48,6 +67,12 @@ export function AmountInput({ value, onChange }: { value: string; onChange: (v: 
         placeholderTextColor={theme.colors.textMuted}
         keyboardType="decimal-pad"
         style={{ flex: 1, color: theme.colors.text, fontSize: 32, paddingVertical: 16 }}
+      />
+      <CurrencyPickerSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={onCurrencyChange}
+        current={currency}
       />
     </View>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { AmountInput } from '../../src/components/AmountInput';
@@ -7,7 +7,9 @@ import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { CategoryPickerSheet } from '../../src/components/CategoryPickerSheet';
 import { parseAmountToCents } from '../../src/lib/currency';
 import { createExpense } from '../../src/repositories/expenses';
+import { getCategory } from '../../src/repositories/categories';
 import type { Category } from '../../src/db/schema';
+import { useSettings } from '../../src/stores/settings';
 import { theme } from '../../src/theme';
 
 export default function NewExpense() {
@@ -17,11 +19,23 @@ export default function NewExpense() {
   const [date, setDate] = useState(new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  const lastUsedCategoryId = useSettings(s => s.lastUsedCategoryId);
+  const setLastUsedCategoryId = useSettings(s => s.setLastUsedCategoryId);
+
+  useEffect(() => {
+    if (!lastUsedCategoryId || category) return;
+    (async () => {
+      const row = await getCategory(lastUsedCategoryId);
+      if (row) setCategory(row);
+    })();
+  }, [lastUsedCategoryId, category]);
+
   async function save() {
     const cents = parseAmountToCents(amount);
     if (cents === null || cents <= 0) return Alert.alert('Invalid amount');
     if (!category) return Alert.alert('Pick a category');
     await createExpense({ amountCents: cents, categoryId: category.id, note: note || null, occurredAt: date });
+    setLastUsedCategoryId(category.id);
     router.back();
   }
 

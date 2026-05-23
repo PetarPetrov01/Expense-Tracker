@@ -13,7 +13,7 @@ export function AmountInput({ value, onChange }: { value: string; onChange: (v: 
   const lastParentValue = useRef(value);
   // Currency symbol comes from displayCurrency once Phase 5 lands.
   // For Phase 1 the existing settings shape is still { currency: CurrencySymbol }.
-  const currency = useSettings(s => s.currency);
+  const currency = useSettings(s => s.displayCurrency);
 
   // If the parent supplies a new value (mount / route reload), normalize once.
   useEffect(() => {

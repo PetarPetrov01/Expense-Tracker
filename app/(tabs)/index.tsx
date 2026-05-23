@@ -11,7 +11,7 @@ import { startOfMonth, endOfMonth } from 'date-fns';
 import { theme } from '../../src/theme';
 
 export default function Home() {
-  const currency = useSettings(s => s.currency);
+  const currency = useSettings(s => s.displayCurrency);
   const [items, setItems] = useState<ExpenseWithCategory[]>([]);
   const [monthTotal, setMonthTotal] = useState(0);
 

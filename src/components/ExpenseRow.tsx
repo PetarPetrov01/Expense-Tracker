@@ -8,7 +8,7 @@ import type { ExpenseWithCategory } from '../repositories/expenses';
 import { theme } from '../theme';
 
 export function ExpenseRow({ e }: { e: ExpenseWithCategory }) {
-  const currency = useSettings(s => s.currency);
+  const currency = useSettings(s => s.displayCurrency);
   return (
     <Link href={`/expense/${e.id}`} asChild>
       <Pressable style={{

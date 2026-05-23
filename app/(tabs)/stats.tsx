@@ -14,7 +14,7 @@ const PERIODS: { key: Period; label: string }[] = [
 ];
 
 export default function Stats() {
-  const currency = useSettings(s => s.currency);
+  const currency = useSettings(s => s.displayCurrency);
   const [period, setPeriod] = useState<Period>('month');
   const [bars, setBars] = useState<Bar[]>([]);
   const [slices, setSlices] = useState<Slice[]>([]);

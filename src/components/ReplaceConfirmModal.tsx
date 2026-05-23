@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, View, Text, Pressable, TextInput } from 'react-native';
+import { Modal, View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import type { ImportPreview } from '../lib/export/import-preview';
 import { theme } from '../theme';
 
@@ -12,14 +12,18 @@ export function ReplaceConfirmModal({ preview, onCancel, onConfirm }: {
 }) {
   const [typed, setTyped] = useState('');
   const armed = typed === CONFIRM_WORD;
-  const { doc, expensesToInsert } = preview;
+  const { doc } = preview;
+  const expensesAfterReplace = doc.expenses.length;
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onCancel}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+      >
         <View style={{ backgroundColor: theme.colors.bg, padding: theme.spacing.lg, gap: theme.spacing.md, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
           <Text style={{ color: '#fca5a5', fontSize: 18, fontWeight: '600' }}>Replace ALL data?</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
-            This will wipe every expense and category currently on this device, then import {expensesToInsert} expenses from the file.
+            This will wipe every expense and category currently on this device, then import {expensesAfterReplace} expenses from the file.
           </Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
             File: {doc.format} v{doc.formatVersion}, exported {new Date(doc.exportedAt).toLocaleString()}.
@@ -49,7 +53,7 @@ export function ReplaceConfirmModal({ preview, onCancel, onConfirm }: {
             </Pressable>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

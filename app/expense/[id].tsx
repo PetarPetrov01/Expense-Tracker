@@ -8,17 +8,25 @@ import { CategoryPickerSheet } from '../../src/components/CategoryPickerSheet';
 import { parseAmountToCents } from '../../src/lib/currency';
 import { listExpenses, updateExpense, deleteExpense } from '../../src/repositories/expenses';
 import { getCategory } from '../../src/repositories/categories';
+import { useFxRates } from '../../src/stores/fxRates';
+import { useSettings } from '../../src/stores/settings';
+import { deriveRateToBaseX1e6 } from '../../src/lib/fx';
 import type { Category } from '../../src/db/schema';
+import type { CurrencyCode } from '../../src/lib/currency';
+import { isCurrencyCode } from '../../src/lib/currency';
 import { theme } from '../../src/theme';
 
 export default function EditExpense() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const expenseId = Number(id);
+  const displayCurrency = useSettings(s => s.displayCurrency);
   const [amount, setAmount] = useState('');
+  const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(displayCurrency);
   const [category, setCategory] = useState<Category | null>(null);
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
+  const rates = useFxRates(s => s.rates);
 
   useEffect(() => {
     (async () => {
@@ -28,16 +36,27 @@ export default function EditExpense() {
       setAmount((found.amountCents / 100).toFixed(2));
       setNote(found.note ?? '');
       setDate(new Date(found.occurredAt));
+      // Defensive: the column is NOT NULL, but if somehow not a known code, fall back to display.
+      setEntryCurrency(isCurrencyCode(found.currency) ? found.currency : displayCurrency);
       const cat = await getCategory(found.categoryId);
       if (cat) setCategory(cat);
     })();
-  }, [expenseId]);
+  }, [expenseId, displayCurrency]);
 
   async function save() {
     const cents = parseAmountToCents(amount);
     if (cents === null || cents <= 0) return Alert.alert('Invalid amount');
     if (!category) return Alert.alert('Pick a category');
-    await updateExpense(expenseId, { amountCents: cents, categoryId: category.id, note: note || null, occurredAt: date });
+    // Spec §1.5: ALWAYS re-snapshot rate on edit-save, regardless of which fields changed.
+    const rateToBaseX1e6 = deriveRateToBaseX1e6(rates, entryCurrency);
+    await updateExpense(expenseId, {
+      amountCents: cents,
+      currency: entryCurrency,
+      rateToBaseX1e6,
+      categoryId: category.id,
+      note: note || null,
+      occurredAt: date,
+    });
     router.back();
   }
 
@@ -50,7 +69,12 @@ export default function EditExpense() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }} contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
-      <AmountInput value={amount} onChange={setAmount} />
+      <AmountInput
+        value={amount}
+        onChange={setAmount}
+        currency={entryCurrency}
+        onCurrencyChange={setEntryCurrency}
+      />
 
       <Pressable onPress={() => setPickerOpen(true)} style={{
         backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md,

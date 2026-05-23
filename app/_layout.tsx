@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRunMigrations } from '../src/db/migrate';
 import { seedIfEmpty } from '../src/db/seed';
 import { useSettings } from '../src/stores/settings';
+import { useFxRates } from '../src/stores/fxRates';
 import { theme } from '../src/theme';
 
 export default function RootLayout() {
@@ -11,6 +12,9 @@ export default function RootLayout() {
   const [seeded, setSeeded] = useState(false);
   const settingsLoaded = useSettings(s => s.loaded);
   const hydrate = useSettings(s => s.hydrate);
+  const hydrateFx = useFxRates(s => s.hydrate);
+  const refreshFxIfStale = useFxRates(s => s.refreshIfStale);
+  const fxLoaded = useFxRates(s => s.loaded);
 
   useEffect(() => {
     if (success) seedIfEmpty().then(() => setSeeded(true));
@@ -20,8 +24,13 @@ export default function RootLayout() {
     if (seeded) hydrate();
   }, [seeded, hydrate]);
 
+  useEffect(() => {
+    if (!seeded) return;
+    hydrateFx().then(() => refreshFxIfStale());
+  }, [seeded, hydrateFx, refreshFxIfStale]);
+
   if (error) return <View><Text>Migration error: {error.message}</Text></View>;
-  if (!success || !seeded || !settingsLoaded) return <View><Text>Loading…</Text></View>;
+  if (!success || !seeded || !settingsLoaded || !fxLoaded) return <View><Text>Loading…</Text></View>;
 
   return (
     <Stack screenOptions={{

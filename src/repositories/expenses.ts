@@ -16,6 +16,8 @@ export async function listExpenses(opts?: { start?: Date; end?: Date; limit?: nu
     .select({
       id: schema.expenses.id,
       amountCents: schema.expenses.amountCents,
+      currency: schema.expenses.currency,
+      rateToBaseX1e6: schema.expenses.rateToBaseX1e6,
       categoryId: schema.expenses.categoryId,
       note: schema.expenses.note,
       occurredAt: schema.expenses.occurredAt,
@@ -32,14 +34,19 @@ export async function listExpenses(opts?: { start?: Date; end?: Date; limit?: nu
   return rows;
 }
 
-export async function createExpense(input: Omit<NewExpense, 'id' | 'createdAt'>): Promise<number> {
+export async function createExpense(
+  input: Omit<NewExpense, 'id' | 'createdAt'>
+): Promise<number> {
   const [row] = await db.insert(schema.expenses)
     .values({ ...input, createdAt: new Date() })
     .returning({ id: schema.expenses.id });
   return row.id;
 }
 
-export async function updateExpense(id: number, patch: Partial<Pick<Expense, 'amountCents' | 'categoryId' | 'note' | 'occurredAt'>>) {
+export async function updateExpense(
+  id: number,
+  patch: Partial<Pick<Expense, 'amountCents' | 'currency' | 'rateToBaseX1e6' | 'categoryId' | 'note' | 'occurredAt'>>,
+) {
   await db.update(schema.expenses).set(patch).where(eq(schema.expenses.id, id));
 }
 
@@ -47,25 +54,33 @@ export async function deleteExpense(id: number) {
   await db.delete(schema.expenses).where(eq(schema.expenses.id, id));
 }
 
-export async function sumExpenses(start: Date, end: Date): Promise<number> {
+// Returns *base-cents* aggregate so callers can convert to whatever display currency
+// is current. Caller multiplies by the EUR→display rate once.
+export async function sumExpensesInBase(start: Date, end: Date): Promise<number> {
   const [row] = await db
-    .select({ total: sql<number>`COALESCE(SUM(${schema.expenses.amountCents}), 0)` })
+    .select({
+      total: sql<number>`COALESCE(SUM(CAST(ROUND(${schema.expenses.amountCents} * ${schema.expenses.rateToBaseX1e6} / 1000000.0) AS INTEGER)), 0)`,
+    })
     .from(schema.expenses)
     .where(and(gte(schema.expenses.occurredAt, start), lte(schema.expenses.occurredAt, end)));
   return Number(row.total);
 }
 
-export async function sumByCategory(start: Date, end: Date) {
+export async function sumByCategoryInBase(start: Date, end: Date) {
   return db
     .select({
       categoryId:   schema.categories.id,
       categoryName: schema.categories.name,
       categoryIcon: schema.categories.icon,
       categoryColor: schema.categories.color,
-      total: sql<number>`COALESCE(SUM(${schema.expenses.amountCents}), 0)`,
+      total: sql<number>`COALESCE(SUM(CAST(ROUND(${schema.expenses.amountCents} * ${schema.expenses.rateToBaseX1e6} / 1000000.0) AS INTEGER)), 0)`,
     })
     .from(schema.expenses)
     .innerJoin(schema.categories, eq(schema.expenses.categoryId, schema.categories.id))
     .where(and(gte(schema.expenses.occurredAt, start), lte(schema.expenses.occurredAt, end)))
     .groupBy(schema.categories.id);
 }
+
+// TEMP shim until Phase 5 updates callers — removed in Task 17.
+export const sumExpenses = sumExpensesInBase;
+export const sumByCategory = sumByCategoryInBase;

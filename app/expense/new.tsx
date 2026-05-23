@@ -10,10 +10,15 @@ import { createExpense } from '../../src/repositories/expenses';
 import { getCategory } from '../../src/repositories/categories';
 import type { Category } from '../../src/db/schema';
 import { useSettings } from '../../src/stores/settings';
+import { useFxRates } from '../../src/stores/fxRates';
+import { deriveRateToBaseX1e6 } from '../../src/lib/fx';
+import type { CurrencyCode } from '../../src/lib/currency';
 import { theme } from '../../src/theme';
 
 export default function NewExpense() {
+  const displayCurrency = useSettings(s => s.displayCurrency);
   const [amount, setAmount] = useState('');
+  const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(displayCurrency);
   const [category, setCategory] = useState<Category | null>(null);
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date());
@@ -21,6 +26,7 @@ export default function NewExpense() {
 
   const lastUsedCategoryId = useSettings(s => s.lastUsedCategoryId);
   const setLastUsedCategoryId = useSettings(s => s.setLastUsedCategoryId);
+  const rates = useFxRates(s => s.rates);
 
   useEffect(() => {
     if (!lastUsedCategoryId || category) return;
@@ -34,14 +40,27 @@ export default function NewExpense() {
     const cents = parseAmountToCents(amount);
     if (cents === null || cents <= 0) return Alert.alert('Invalid amount');
     if (!category) return Alert.alert('Pick a category');
-    await createExpense({ amountCents: cents, categoryId: category.id, note: note || null, occurredAt: date });
+    const rateToBaseX1e6 = deriveRateToBaseX1e6(rates, entryCurrency);
+    await createExpense({
+      amountCents: cents,
+      currency: entryCurrency,
+      rateToBaseX1e6,
+      categoryId: category.id,
+      note: note || null,
+      occurredAt: date,
+    });
     setLastUsedCategoryId(category.id);
     router.back();
   }
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }} contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
-      <AmountInput value={amount} onChange={setAmount} />
+      <AmountInput
+        value={amount}
+        onChange={setAmount}
+        currency={entryCurrency}
+        onCurrencyChange={setEntryCurrency}
+      />
 
       <Pressable onPress={() => setPickerOpen(true)} style={{
         backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md,

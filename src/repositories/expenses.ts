@@ -80,7 +80,3 @@ export async function sumByCategoryInBase(start: Date, end: Date) {
     .where(and(gte(schema.expenses.occurredAt, start), lte(schema.expenses.occurredAt, end)))
     .groupBy(schema.categories.id);
 }
-
-// TEMP shim until Phase 5 updates callers — removed in Task 17.
-export const sumExpenses = sumExpensesInBase;
-export const sumByCategory = sumByCategoryInBase;

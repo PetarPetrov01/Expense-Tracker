@@ -6,6 +6,7 @@ export const categories = sqliteTable('categories', {
   icon: text('icon').notNull(),
   color: text('color').notNull(),
   isSeed: integer('is_seed', { mode: 'boolean' }).notNull().default(false),
+  stableId: text('stable_id'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 

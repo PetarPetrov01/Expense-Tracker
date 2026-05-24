@@ -29,17 +29,17 @@ export function CategoryPickerSheet({ visible, onClose, onSelect }: {
         </View>
         <FlatList
           data={items}
-          numColumns={4}
           keyExtractor={(c) => String(c.id)}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => { onSelect(item); onClose(); }}
-              style={{ flex: 1, alignItems: 'center', padding: theme.spacing.sm }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: theme.spacing.md, gap: theme.spacing.md }}
             >
-              <CategoryIcon icon={item.icon} color={item.color} />
-              <Text style={{ color: theme.colors.text, marginTop: 4, fontSize: 12, textAlign: 'center' }} numberOfLines={1}>{item.name}</Text>
+              <CategoryIcon icon={item.icon} color={item.color} size={44} />
+              <Text style={{ color: theme.colors.text, fontSize: 16, flex: 1 }} numberOfLines={1}>{item.name}</Text>
             </Pressable>
           )}
+          ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: theme.colors.border }} />}
         />
       </View>
     </Modal>

@@ -24,7 +24,7 @@ export function CategoryQuickGrid({
         return (
           <View key={c.id} style={{ width: '25%', padding: theme.spacing.xs }}>
             <Pressable onPress={() => onSelect(c)} style={tileStyle(selected)}>
-              <CategoryIcon icon={c.icon} color={c.color} size={40} />
+              <CategoryIcon icon={c.icon} color={c.color} size={52} />
               <Text style={tileLabel} numberOfLines={1}>{c.name}</Text>
             </Pressable>
           </View>
@@ -34,11 +34,11 @@ export function CategoryQuickGrid({
       <View key="__more" style={{ width: '25%', padding: theme.spacing.xs }}>
         <Pressable onPress={onMore} style={tileStyle(false)}>
           <View style={{
-            width: 40, height: 40, borderRadius: 20,
+            width: 52, height: 52, borderRadius: 26,
             backgroundColor: theme.colors.surface2,
             justifyContent: 'center', alignItems: 'center',
           }}>
-            <MaterialCommunityIcons name="dots-horizontal" size={22} color={theme.colors.text} />
+            <MaterialCommunityIcons name="dots-horizontal" size={28} color={theme.colors.text} />
           </View>
           <Text style={tileLabel} numberOfLines={1}>More</Text>
         </Pressable>
@@ -61,7 +61,7 @@ function tileStyle(selected: boolean) {
 
 const tileLabel = {
   color: theme.colors.text,
-  marginTop: 4,
-  fontSize: 12,
+  marginTop: 6,
+  fontSize: 13,
   textAlign: 'center' as const,
 };

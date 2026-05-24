@@ -3,6 +3,7 @@ import { Link } from 'expo-router';
 import { format } from 'date-fns';
 import { CategoryIcon } from './CategoryIcon';
 import { formatAmount, type CurrencyCode } from '../lib/currency';
+import { amountInBaseCents } from '../lib/fx';
 import { theme } from '../theme';
 import type { ExpenseWithCategory } from '../repositories/expenses';
 
@@ -28,8 +29,7 @@ export function TopExpensesList({
         Largest expenses
       </Text>
       {expenses.map(e => {
-        const baseCents = Math.round((e.amountCents * e.rateToBaseX1e6) / 1_000_000);
-        const display = toDisplay(baseCents);
+        const display = toDisplay(amountInBaseCents(e));
         return (
           <Link key={e.id} href={`/expense/${e.id}`} asChild>
             <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>

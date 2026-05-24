@@ -22,7 +22,6 @@ export default function Stats() {
   const [anchor, setAnchor] = useState<Date>(new Date());
   const [currentBase, setCurrentBase] = useState(0);
   const [previousBase, setPreviousBase] = useState(0);
-  const [hasPrevious, setHasPrevious] = useState(false);
 
   useFocusEffect(useCallback(() => {
     (async () => {
@@ -37,7 +36,6 @@ export default function Stats() {
 
       setCurrentBase(currTotal);
       setPreviousBase(prevTotal);
-      setHasPrevious(prevTotal > 0);
     })();
   }, [scope, anchor.getTime(), weekStart]));
 
@@ -71,7 +69,7 @@ export default function Stats() {
           currentDisplay={currentDisplay}
           previousDisplay={previousDisplay}
           displayCurrency={displayCurrency}
-          hasPrevious={hasPrevious}
+          hasPrevious={true}
         />
       )}
     </ScrollView>

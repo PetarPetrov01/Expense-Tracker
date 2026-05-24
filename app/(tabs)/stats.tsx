@@ -1,76 +1,79 @@
 import { useCallback, useState } from 'react';
-import { ScrollView, View, Text, Pressable } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { listExpenses } from '../../src/repositories/expenses';
-import { PeriodBarChart, type Bar } from '../../src/components/charts/PeriodBarChart';
-import { bucketsFor, bucketKeyFor, rangeFor, type Period } from '../../src/lib/dates';
-import { formatAmount } from '../../src/lib/currency';
+import { sumExpensesInBase } from '../../src/repositories/expenses';
+import { PeriodScope } from '../../src/components/PeriodScope';
+import { DeltaHeader } from '../../src/components/DeltaHeader';
+import { EmptyState } from '../../src/components/EmptyState';
+import { scopeRange, stepAnchor, type Scope } from '../../src/lib/dates';
 import { useSettings } from '../../src/stores/settings';
 import { useFxRates } from '../../src/stores/fxRates';
-import { amountInBaseCents, rateLookup, RATE_SCALE } from '../../src/lib/fx';
+import { rateLookup, RATE_SCALE } from '../../src/lib/fx';
 import { theme } from '../../src/theme';
 
-const PERIODS: { key: Period; label: string }[] = [
-  { key: 'day', label: 'Daily' }, { key: 'month', label: 'Monthly' }, { key: 'year', label: 'Yearly' },
-];
+const STATS_SCOPES: Scope[] = ['week', 'month', 'year'];
 
 export default function Stats() {
   const displayCurrency = useSettings(s => s.displayCurrency);
+  const weekStart = useSettings(s => s.weekStart);
   const rates = useFxRates(s => s.rates);
-  const [period, setPeriod] = useState<Period>('month');
-  const [bars, setBars] = useState<Bar[]>([]);
-  const [totalBase, setTotalBase] = useState(0);
+
+  const [scope, setScope] = useState<Scope>('month');
+  const [anchor, setAnchor] = useState<Date>(new Date());
+  const [currentBase, setCurrentBase] = useState(0);
+  const [previousBase, setPreviousBase] = useState(0);
+  const [hasPrevious, setHasPrevious] = useState(false);
 
   useFocusEffect(useCallback(() => {
     (async () => {
-      const { start, end } = rangeFor(period);
-      const buckets = bucketsFor(period);
-      const expensesRows = await listExpenses({ start, end });
-      const baseTotals = new Map<string, number>();
-      let totalBaseLocal = 0;
-      for (const e of expensesRows) {
-        const baseCents = amountInBaseCents({ amountCents: e.amountCents, rateToBaseX1e6: e.rateToBaseX1e6 });
-        const key = bucketKeyFor(period, new Date(e.occurredAt));
-        baseTotals.set(key, (baseTotals.get(key) ?? 0) + baseCents);
-        totalBaseLocal += baseCents;
-      }
-      setBars(buckets.map(b => ({ label: b.label, valueCents: baseTotals.get(b.key) ?? 0 })));
-      setTotalBase(totalBaseLocal);
+      const curr = scopeRange(scope, anchor, weekStart);
+      const prevAnchor = stepAnchor(scope, anchor, -1);
+      const prev = scopeRange(scope, prevAnchor, weekStart);
+
+      const [currTotal, prevTotal] = await Promise.all([
+        sumExpensesInBase(curr.start, curr.end),
+        sumExpensesInBase(prev.start, prev.end),
+      ]);
+
+      setCurrentBase(currTotal);
+      setPreviousBase(prevTotal);
+      setHasPrevious(prevTotal > 0);
     })();
-  }, [period]));
+  }, [scope, anchor.getTime(), weekStart]));
 
   const eurToDisplay = rateLookup(rates, displayCurrency);
   const toDisplay = (baseCents: number) => Math.round((baseCents * eurToDisplay) / RATE_SCALE);
-
-  const totalDisplay = toDisplay(totalBase);
-  const avgDisplay = bars.length ? totalDisplay / bars.length : 0;
-  const displayBars: Bar[] = bars.map(b => ({ label: b.label, valueCents: toDisplay(b.valueCents) }));
+  const currentDisplay = toDisplay(currentBase);
+  const previousDisplay = toDisplay(previousBase);
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }} contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-        {PERIODS.map(p => (
-          <Pressable key={p.key} onPress={() => setPeriod(p.key)} style={{
-            flex: 1, padding: theme.spacing.sm, borderRadius: theme.radius.pill, alignItems: 'center',
-            backgroundColor: period === p.key ? theme.colors.primary : theme.colors.surface,
-          }}>
-            <Text style={{ color: '#fff' }}>{p.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-        <View style={{ flex: 1, padding: theme.spacing.md, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Total</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600' }}>{formatAmount(totalDisplay, displayCurrency)}</Text>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+      contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}
+    >
+      <PeriodScope
+        scope={scope}
+        anchor={anchor}
+        onScopeChange={setScope}
+        onAnchorChange={setAnchor}
+        scopes={STATS_SCOPES}
+      />
+      {currentBase === 0 && previousBase === 0 ? (
+        <View style={{
+          padding: theme.spacing.md,
+          backgroundColor: theme.colors.surface,
+          borderRadius: theme.radius.md,
+        }}>
+          <EmptyState icon="chart-line" title="No data" hint="No expenses in this range." />
         </View>
-        <View style={{ flex: 1, padding: theme.spacing.md, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Avg / {period}</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600' }}>{formatAmount(Math.round(avgDisplay), displayCurrency)}</Text>
-        </View>
-      </View>
-
-      <PeriodBarChart bars={displayBars} title={period === 'day' ? 'Last 7 days' : period === 'month' ? 'Last 12 months' : 'Last 5 years'} />
+      ) : (
+        <DeltaHeader
+          currentDisplay={currentDisplay}
+          previousDisplay={previousDisplay}
+          displayCurrency={displayCurrency}
+          hasPrevious={hasPrevious}
+        />
+      )}
     </ScrollView>
   );
 }

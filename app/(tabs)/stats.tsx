@@ -5,6 +5,7 @@ import { sumExpensesInBase, sumByCategoryInBase } from '../../src/repositories/e
 import { PeriodScope } from '../../src/components/PeriodScope';
 import { DeltaHeader } from '../../src/components/DeltaHeader';
 import { CategoryMoversList, type Mover } from '../../src/components/CategoryMoversList';
+import { PeriodBarChart, type Bar } from '../../src/components/charts/PeriodBarChart';
 import { EmptyState } from '../../src/components/EmptyState';
 import { scopeRange, stepAnchor, lastNBuckets, type Scope } from '../../src/lib/dates';
 import { useSettings } from '../../src/stores/settings';
@@ -24,6 +25,7 @@ export default function Stats() {
   const [currentBase, setCurrentBase] = useState(0);
   const [previousBase, setPreviousBase] = useState(0);
   const [movers, setMovers] = useState<Mover[]>([]);
+  const [trendBars, setTrendBars] = useState<Bar[]>([]);
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
@@ -40,9 +42,12 @@ export default function Stats() {
       ]);
 
       const buckets = lastNBuckets(scope, 6, anchor, weekStart);
-      const bucketCats = await Promise.all(
-        buckets.map(b => sumByCategoryInBase(b.start, b.end)),
-      );
+      const monthBuckets = lastNBuckets('month', 6, new Date(), weekStart);
+
+      const [bucketCats, monthTotals] = await Promise.all([
+        Promise.all(buckets.map(b => sumByCategoryInBase(b.start, b.end))),
+        Promise.all(monthBuckets.map(b => sumExpensesInBase(b.start, b.end))),
+      ]);
 
       const ids = new Set<number>();
       for (const r of currCats) ids.add(r.categoryId);
@@ -71,10 +76,16 @@ export default function Stats() {
         });
       }
 
+      const bars: Bar[] = monthBuckets.map((b, i) => ({
+        label: b.label,
+        valueCents: monthTotals[i],
+      }));
+
       if (cancelled) return;
       setCurrentBase(currTotal);
       setPreviousBase(prevTotal);
       setMovers(assembled);
+      setTrendBars(bars);
     })();
     return () => { cancelled = true; };
   }, [scope, anchor.getTime(), weekStart]));
@@ -83,6 +94,10 @@ export default function Stats() {
   const toDisplay = (baseCents: number) => Math.round((baseCents * eurToDisplay) / RATE_SCALE);
   const currentDisplay = toDisplay(currentBase);
   const previousDisplay = toDisplay(previousBase);
+  const displayTrendBars: Bar[] = trendBars.map(b => ({
+    label: b.label,
+    valueCents: toDisplay(b.valueCents),
+  }));
 
   return (
     <ScrollView
@@ -118,6 +133,7 @@ export default function Stats() {
             hasPrevious={previousBase > 0}
             toDisplay={toDisplay}
           />
+          <PeriodBarChart bars={displayTrendBars} title="Last 6 months" />
         </>
       )}
     </ScrollView>

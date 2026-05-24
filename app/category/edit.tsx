@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { ColorPicker } from '../../src/components/ColorPicker';
 import { IconPicker } from '../../src/components/IconPicker';
-import { createCategory, updateCategory, getCategory } from '../../src/repositories/categories';
+import { createCategory, updateCategory, getCategory, deleteCategory } from '../../src/repositories/categories';
 import { theme } from '../../src/theme';
 
 export default function CategoryEdit() {
@@ -13,12 +13,13 @@ export default function CategoryEdit() {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#10b981');
   const [icon, setIcon] = useState('cart');
+  const [isSeed, setIsSeed] = useState(false);
 
   useEffect(() => {
     if (!editing) return;
     getCategory(Number(id)).then(c => {
       if (!c) return router.back();
-      setName(c.name); setColor(c.color); setIcon(c.icon);
+      setName(c.name); setColor(c.color); setIcon(c.icon); setIsSeed(c.isSeed);
     });
   }, [id]);
 
@@ -27,6 +28,16 @@ export default function CategoryEdit() {
     if (editing) await updateCategory(Number(id), { name: name.trim(), color, icon });
     else await createCategory({ name: name.trim(), color, icon });
     router.back();
+  }
+
+  function confirmDelete() {
+    Alert.alert(`Delete "${name}"?`, 'Expenses in this category will be orphaned.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        await deleteCategory(Number(id));
+        router.back();
+      } },
+    ]);
   }
 
   return (
@@ -52,6 +63,12 @@ export default function CategoryEdit() {
       <Pressable onPress={save} style={{ backgroundColor: theme.colors.primary, padding: theme.spacing.md, borderRadius: theme.radius.md, alignItems: 'center' }}>
         <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{editing ? 'Save changes' : 'Create category'}</Text>
       </Pressable>
+
+      {editing && !isSeed && (
+        <Pressable onPress={confirmDelete} style={{ padding: theme.spacing.md, alignItems: 'center' }}>
+          <Text style={{ color: theme.colors.danger, fontSize: 16 }}>Delete category</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }

@@ -1,16 +1,22 @@
 import { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { sumExpensesInBase, sumByCategoryInBase } from '../../src/repositories/expenses';
+import {
+  sumExpensesInBase,
+  sumByCategoryInBase,
+  listExpenses,
+  type ExpenseWithCategory,
+} from '../../src/repositories/expenses';
 import { PeriodScope } from '../../src/components/PeriodScope';
 import { DeltaHeader } from '../../src/components/DeltaHeader';
 import { CategoryMoversList, type Mover } from '../../src/components/CategoryMoversList';
 import { PeriodBarChart, type Bar } from '../../src/components/charts/PeriodBarChart';
+import { TopExpensesList } from '../../src/components/TopExpensesList';
 import { EmptyState } from '../../src/components/EmptyState';
 import { scopeRange, stepAnchor, lastNBuckets, type Scope } from '../../src/lib/dates';
 import { useSettings } from '../../src/stores/settings';
 import { useFxRates } from '../../src/stores/fxRates';
-import { rateLookup, RATE_SCALE } from '../../src/lib/fx';
+import { rateLookup, RATE_SCALE, amountInBaseCents } from '../../src/lib/fx';
 import { theme } from '../../src/theme';
 
 const STATS_SCOPES: Scope[] = ['week', 'month', 'year'];
@@ -26,6 +32,7 @@ export default function Stats() {
   const [previousBase, setPreviousBase] = useState(0);
   const [movers, setMovers] = useState<Mover[]>([]);
   const [trendBars, setTrendBars] = useState<Bar[]>([]);
+  const [topExpenses, setTopExpenses] = useState<ExpenseWithCategory[]>([]);
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
@@ -34,11 +41,12 @@ export default function Stats() {
       const prevAnchor = stepAnchor(scope, anchor, -1);
       const prev = scopeRange(scope, prevAnchor, weekStart);
 
-      const [currTotal, prevTotal, currCats, prevCats] = await Promise.all([
+      const [currTotal, prevTotal, currCats, prevCats, periodExpenses] = await Promise.all([
         sumExpensesInBase(curr.start, curr.end),
         sumExpensesInBase(prev.start, prev.end),
         sumByCategoryInBase(curr.start, curr.end),
         sumByCategoryInBase(prev.start, prev.end),
+        listExpenses({ start: curr.start, end: curr.end }),
       ]);
 
       const buckets = lastNBuckets(scope, 6, anchor, weekStart);
@@ -81,11 +89,16 @@ export default function Stats() {
         valueCents: monthTotals[i],
       }));
 
+      const topFive = [...periodExpenses]
+        .sort((a, b) => amountInBaseCents(b) - amountInBaseCents(a))
+        .slice(0, 5);
+
       if (cancelled) return;
       setCurrentBase(currTotal);
       setPreviousBase(prevTotal);
       setMovers(assembled);
       setTrendBars(bars);
+      setTopExpenses(topFive);
     })();
     return () => { cancelled = true; };
   }, [scope, anchor.getTime(), weekStart]));
@@ -134,6 +147,11 @@ export default function Stats() {
             toDisplay={toDisplay}
           />
           <PeriodBarChart bars={displayTrendBars} title="Last 6 months" />
+          <TopExpensesList
+            expenses={topExpenses}
+            toDisplay={toDisplay}
+            displayCurrency={displayCurrency}
+          />
         </>
       )}
     </ScrollView>

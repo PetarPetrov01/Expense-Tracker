@@ -26,6 +26,7 @@ export default function Stats() {
   const [movers, setMovers] = useState<Mover[]>([]);
 
   useFocusEffect(useCallback(() => {
+    let cancelled = false;
     (async () => {
       const curr = scopeRange(scope, anchor, weekStart);
       const prevAnchor = stepAnchor(scope, anchor, -1);
@@ -37,9 +38,6 @@ export default function Stats() {
         sumByCategoryInBase(curr.start, curr.end),
         sumByCategoryInBase(prev.start, prev.end),
       ]);
-
-      setCurrentBase(currTotal);
-      setPreviousBase(prevTotal);
 
       const buckets = lastNBuckets(scope, 6, anchor, weekStart);
       const bucketCats = await Promise.all(
@@ -72,8 +70,13 @@ export default function Stats() {
           historyCents,
         });
       }
+
+      if (cancelled) return;
+      setCurrentBase(currTotal);
+      setPreviousBase(prevTotal);
       setMovers(assembled);
     })();
+    return () => { cancelled = true; };
   }, [scope, anchor.getTime(), weekStart]));
 
   const eurToDisplay = rateLookup(rates, displayCurrency);

@@ -1,76 +1,159 @@
 import { useCallback, useState } from 'react';
-import { ScrollView, View, Text, Pressable } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { listExpenses } from '../../src/repositories/expenses';
+import {
+  sumExpensesInBase,
+  sumByCategoryInBase,
+  listExpenses,
+  type ExpenseWithCategory,
+} from '../../src/repositories/expenses';
+import { PeriodScope } from '../../src/components/PeriodScope';
+import { DeltaHeader } from '../../src/components/DeltaHeader';
+import { CategoryMoversList, type Mover } from '../../src/components/CategoryMoversList';
 import { PeriodBarChart, type Bar } from '../../src/components/charts/PeriodBarChart';
-import { bucketsFor, bucketKeyFor, rangeFor, type Period } from '../../src/lib/dates';
-import { formatAmount } from '../../src/lib/currency';
+import { TopExpensesList } from '../../src/components/TopExpensesList';
+import { EmptyState } from '../../src/components/EmptyState';
+import { scopeRange, stepAnchor, lastNBuckets, type Scope } from '../../src/lib/dates';
 import { useSettings } from '../../src/stores/settings';
 import { useFxRates } from '../../src/stores/fxRates';
-import { amountInBaseCents, rateLookup, RATE_SCALE } from '../../src/lib/fx';
+import { rateLookup, RATE_SCALE, amountInBaseCents } from '../../src/lib/fx';
 import { theme } from '../../src/theme';
 
-const PERIODS: { key: Period; label: string }[] = [
-  { key: 'day', label: 'Daily' }, { key: 'month', label: 'Monthly' }, { key: 'year', label: 'Yearly' },
-];
+const STATS_SCOPES: Scope[] = ['week', 'month', 'year'];
 
 export default function Stats() {
   const displayCurrency = useSettings(s => s.displayCurrency);
+  const weekStart = useSettings(s => s.weekStart);
   const rates = useFxRates(s => s.rates);
-  const [period, setPeriod] = useState<Period>('month');
-  const [bars, setBars] = useState<Bar[]>([]);
-  const [totalBase, setTotalBase] = useState(0);
+
+  const [scope, setScope] = useState<Scope>('month');
+  const [anchor, setAnchor] = useState<Date>(new Date());
+  const [currentBase, setCurrentBase] = useState(0);
+  const [previousBase, setPreviousBase] = useState(0);
+  const [movers, setMovers] = useState<Mover[]>([]);
+  const [trendBars, setTrendBars] = useState<Bar[]>([]);
+  const [topExpenses, setTopExpenses] = useState<ExpenseWithCategory[]>([]);
 
   useFocusEffect(useCallback(() => {
+    let cancelled = false;
     (async () => {
-      const { start, end } = rangeFor(period);
-      const buckets = bucketsFor(period);
-      const expensesRows = await listExpenses({ start, end });
-      const baseTotals = new Map<string, number>();
-      let totalBaseLocal = 0;
-      for (const e of expensesRows) {
-        const baseCents = amountInBaseCents({ amountCents: e.amountCents, rateToBaseX1e6: e.rateToBaseX1e6 });
-        const key = bucketKeyFor(period, new Date(e.occurredAt));
-        baseTotals.set(key, (baseTotals.get(key) ?? 0) + baseCents);
-        totalBaseLocal += baseCents;
+      const curr = scopeRange(scope, anchor, weekStart);
+      const prevAnchor = stepAnchor(scope, anchor, -1);
+      const prev = scopeRange(scope, prevAnchor, weekStart);
+
+      const [currTotal, prevTotal, currCats, prevCats, periodExpenses] = await Promise.all([
+        sumExpensesInBase(curr.start, curr.end),
+        sumExpensesInBase(prev.start, prev.end),
+        sumByCategoryInBase(curr.start, curr.end),
+        sumByCategoryInBase(prev.start, prev.end),
+        listExpenses({ start: curr.start, end: curr.end }),
+      ]);
+
+      const buckets = lastNBuckets(scope, 6, anchor, weekStart);
+      const monthBuckets = lastNBuckets('month', 6, new Date(), weekStart);
+
+      const [bucketCats, monthTotals] = await Promise.all([
+        Promise.all(buckets.map(b => sumByCategoryInBase(b.start, b.end))),
+        Promise.all(monthBuckets.map(b => sumExpensesInBase(b.start, b.end))),
+      ]);
+
+      const ids = new Set<number>();
+      for (const r of currCats) ids.add(r.categoryId);
+      for (const r of prevCats) ids.add(r.categoryId);
+
+      const currMetaMap = new Map(currCats.map(r => [r.categoryId, r]));
+      const prevMetaMap = new Map(prevCats.map(r => [r.categoryId, r]));
+
+      const assembled: Mover[] = [];
+      for (const id of ids) {
+        const meta = currMetaMap.get(id) ?? prevMetaMap.get(id)!;
+        const currentCents = Number(currMetaMap.get(id)?.total ?? 0);
+        const previousCents = Number(prevMetaMap.get(id)?.total ?? 0);
+        const historyCents = bucketCats.map(rows => {
+          const hit = rows.find(r => r.categoryId === id);
+          return hit ? Number(hit.total) : 0;
+        });
+        assembled.push({
+          categoryId: id,
+          categoryName: meta.categoryName,
+          categoryIcon: meta.categoryIcon,
+          categoryColor: meta.categoryColor,
+          currentCents,
+          previousCents,
+          historyCents,
+        });
       }
-      setBars(buckets.map(b => ({ label: b.label, valueCents: baseTotals.get(b.key) ?? 0 })));
-      setTotalBase(totalBaseLocal);
+
+      const bars: Bar[] = monthBuckets.map((b, i) => ({
+        label: b.label,
+        valueCents: monthTotals[i],
+      }));
+
+      const topFive = [...periodExpenses]
+        .sort((a, b) => amountInBaseCents(b) - amountInBaseCents(a))
+        .slice(0, 5);
+
+      if (cancelled) return;
+      setCurrentBase(currTotal);
+      setPreviousBase(prevTotal);
+      setMovers(assembled);
+      setTrendBars(bars);
+      setTopExpenses(topFive);
     })();
-  }, [period]));
+    return () => { cancelled = true; };
+  }, [scope, anchor.getTime(), weekStart]));
 
   const eurToDisplay = rateLookup(rates, displayCurrency);
   const toDisplay = (baseCents: number) => Math.round((baseCents * eurToDisplay) / RATE_SCALE);
-
-  const totalDisplay = toDisplay(totalBase);
-  const avgDisplay = bars.length ? totalDisplay / bars.length : 0;
-  const displayBars: Bar[] = bars.map(b => ({ label: b.label, valueCents: toDisplay(b.valueCents) }));
+  const currentDisplay = toDisplay(currentBase);
+  const previousDisplay = toDisplay(previousBase);
+  const displayTrendBars: Bar[] = trendBars.map(b => ({
+    label: b.label,
+    valueCents: toDisplay(b.valueCents),
+  }));
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }} contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-        {PERIODS.map(p => (
-          <Pressable key={p.key} onPress={() => setPeriod(p.key)} style={{
-            flex: 1, padding: theme.spacing.sm, borderRadius: theme.radius.pill, alignItems: 'center',
-            backgroundColor: period === p.key ? theme.colors.primary : theme.colors.surface,
-          }}>
-            <Text style={{ color: '#fff' }}>{p.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-        <View style={{ flex: 1, padding: theme.spacing.md, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Total</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600' }}>{formatAmount(totalDisplay, displayCurrency)}</Text>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+      contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}
+    >
+      <PeriodScope
+        scope={scope}
+        anchor={anchor}
+        onScopeChange={setScope}
+        onAnchorChange={setAnchor}
+        scopes={STATS_SCOPES}
+      />
+      {currentBase === 0 && previousBase === 0 ? (
+        <View style={{
+          padding: theme.spacing.md,
+          backgroundColor: theme.colors.surface,
+          borderRadius: theme.radius.md,
+        }}>
+          <EmptyState icon="chart-line" title="No data" hint="No expenses in this range." />
         </View>
-        <View style={{ flex: 1, padding: theme.spacing.md, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Avg / {period}</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600' }}>{formatAmount(Math.round(avgDisplay), displayCurrency)}</Text>
-        </View>
-      </View>
-
-      <PeriodBarChart bars={displayBars} title={period === 'day' ? 'Last 7 days' : period === 'month' ? 'Last 12 months' : 'Last 5 years'} />
+      ) : (
+        <>
+          <DeltaHeader
+            currentDisplay={currentDisplay}
+            previousDisplay={previousDisplay}
+            displayCurrency={displayCurrency}
+            hasPrevious={previousBase > 0}
+          />
+          <CategoryMoversList
+            movers={movers}
+            displayCurrency={displayCurrency}
+            hasPrevious={previousBase > 0}
+            toDisplay={toDisplay}
+          />
+          <PeriodBarChart bars={displayTrendBars} title="Last 6 months" />
+          <TopExpensesList
+            expenses={topExpenses}
+            toDisplay={toDisplay}
+            displayCurrency={displayCurrency}
+          />
+        </>
+      )}
     </ScrollView>
   );
 }

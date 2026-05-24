@@ -55,7 +55,7 @@ export async function listTopCategoriesByUsage(opts: {
     .groupBy(schema.categories.id)
     .orderBy(
       sql`COUNT(${schema.expenses.id}) DESC`,
-      sql`MAX(${schema.expenses.occurredAt}) DESC`,
+      sql`COALESCE(MAX(${schema.expenses.occurredAt}), 0) DESC`,
       asc(schema.categories.name),
     )
     .limit(opts.limit);

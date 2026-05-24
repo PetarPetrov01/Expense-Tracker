@@ -2,7 +2,9 @@
 -- columns. App is in dev so we wipe all existing expense rows rather than
 -- backfill. DO NOT reuse this pattern for any post-launch migration.
 DELETE FROM `expenses`;
+--> statement-breakpoint
 ALTER TABLE `expenses` ADD `currency` text NOT NULL DEFAULT 'EUR';
+--> statement-breakpoint
 ALTER TABLE `expenses` ADD `rate_to_base_x1e6` integer NOT NULL DEFAULT 1000000;
 --> statement-breakpoint
 CREATE TABLE `fx_rates` (

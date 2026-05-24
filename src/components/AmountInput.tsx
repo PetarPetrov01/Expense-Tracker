@@ -20,26 +20,33 @@ export function AmountInput({
   onCurrencyChange: (c: CurrencyCode) => void;
 }) {
   const [draft, setDraft] = useState(value);
-  const lastParentValue = useRef(value);
+  // Tracks the last string we have authoritatively shown — either emitted upward via
+  // onChange or accepted from a fresh parent-supplied value. Used to distinguish the
+  // parent simply echoing back our own emit (no-op) from the parent feeding us a new
+  // value to render (re-normalize). Without this guard the effect snaps "1" → "1.00"
+  // mid-typing because every keystroke round-trips through the parent.
+  const lastSyncedRef = useRef(value);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
-    if (value !== lastParentValue.current) {
-      lastParentValue.current = value;
+    if (value !== lastSyncedRef.current) {
       const normalized = padOnBlur(clampWhileTyping('', value));
       setDraft(normalized);
+      lastSyncedRef.current = normalized;
     }
   }, [value]);
 
   function handleChangeText(next: string) {
     const accepted = clampWhileTyping(draft, next);
     setDraft(accepted);
+    lastSyncedRef.current = accepted;
     onChange(accepted);
   }
 
   function handleBlur() {
     const padded = padOnBlur(draft);
     setDraft(padded);
+    lastSyncedRef.current = padded;
     onChange(padded);
   }
 

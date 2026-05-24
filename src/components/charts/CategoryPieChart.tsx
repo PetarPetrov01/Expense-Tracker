@@ -19,6 +19,7 @@ export function CategoryPieChart({ slices }: { slices: Slice[] }) {
       <Text style={{ color: theme.colors.text, fontSize: 16, marginBottom: theme.spacing.sm }}>By category</Text>
       <View style={{ alignItems: 'center', marginVertical: theme.spacing.md }}>
         <PieChart data={data} donut radius={90} innerRadius={55}
+          innerCircleColor={theme.colors.surface}
           centerLabelComponent={() => (
             <View style={{ alignItems: 'center' }}>
               <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Total</Text>

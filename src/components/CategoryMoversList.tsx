@@ -51,7 +51,7 @@ export function CategoryMoversList({
       gap: theme.spacing.md,
     }}>
       <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>
-        What's changing
+        What&apos;s changing
       </Text>
       {gainers.length > 0 && (
         <View style={{ gap: theme.spacing.sm }}>

@@ -16,9 +16,28 @@ export function DeltaHeader({
 }) {
   const diff = currentDisplay - previousDisplay;
   const pct = previousDisplay === 0 ? null : (diff / previousDisplay) * 100;
+  const bothZero = currentDisplay === 0 && previousDisplay === 0;
+  const flat = diff === 0;
   const up = diff > 0;
-  // Spending up = red (more money out), spending down = green.
-  const deltaColor = up ? theme.colors.danger : theme.colors.primary;
+
+  let arrow: 'arrow-up' | 'arrow-down' | 'minus' = 'minus';
+  let deltaColor: string = theme.colors.textMuted;
+  if (!flat) {
+    arrow = up ? 'arrow-up' : 'arrow-down';
+    deltaColor = up ? theme.colors.danger : theme.colors.primary;
+  }
+
+  let deltaLabel: string;
+  if (pct === null) {
+    deltaLabel = 'new';
+  } else if (flat) {
+    deltaLabel = '0%';
+  } else {
+    const absPct = Math.abs(pct);
+    deltaLabel = absPct < 1 ? '<1%' : `${absPct.toFixed(0)}%`;
+  }
+
+  const showComparison = hasPrevious && !bothZero;
 
   return (
     <View style={{
@@ -31,15 +50,11 @@ export function DeltaHeader({
       <Text style={{ color: theme.colors.text, fontSize: 32, fontWeight: '700' }}>
         {formatAmount(currentDisplay, displayCurrency)}
       </Text>
-      {hasPrevious ? (
+      {showComparison ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <MaterialCommunityIcons
-            name={up ? 'arrow-up' : 'arrow-down'}
-            size={16}
-            color={deltaColor}
-          />
+          <MaterialCommunityIcons name={arrow} size={16} color={deltaColor} />
           <Text style={{ color: deltaColor, fontSize: 13, fontWeight: '600' }}>
-            {pct === null ? 'new' : `${Math.abs(pct).toFixed(0)}%`}
+            {deltaLabel}
           </Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
             vs {formatAmount(previousDisplay, displayCurrency)} previous

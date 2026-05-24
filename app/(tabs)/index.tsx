@@ -2,31 +2,37 @@ import { useCallback, useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { listExpenses, sumExpenses, type ExpenseWithCategory } from '../../src/repositories/expenses';
+import { listExpenses, sumExpensesInBase, type ExpenseWithCategory } from '../../src/repositories/expenses';
 import { ExpenseRow } from '../../src/components/ExpenseRow';
 import { EmptyState } from '../../src/components/EmptyState';
 import { formatAmount } from '../../src/lib/currency';
 import { useSettings } from '../../src/stores/settings';
+import { useFxRates } from '../../src/stores/fxRates';
+import { rateLookup, RATE_SCALE } from '../../src/lib/fx';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { theme } from '../../src/theme';
 
 export default function Home() {
-  const currency = useSettings(s => s.currency);
+  const displayCurrency = useSettings(s => s.displayCurrency);
+  const rates = useFxRates(s => s.rates);
   const [items, setItems] = useState<ExpenseWithCategory[]>([]);
-  const [monthTotal, setMonthTotal] = useState(0);
+  const [monthBaseCents, setMonthBaseCents] = useState(0);
 
   useFocusEffect(useCallback(() => {
     const now = new Date();
     listExpenses({ limit: 50 }).then(setItems);
-    sumExpenses(startOfMonth(now), endOfMonth(now)).then(setMonthTotal);
+    sumExpensesInBase(startOfMonth(now), endOfMonth(now)).then(setMonthBaseCents);
   }, []));
+
+  const eurToDisplay = rateLookup(rates, displayCurrency);
+  const monthDisplayCents = Math.round((monthBaseCents * eurToDisplay) / RATE_SCALE);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <View style={{ padding: theme.spacing.lg }}>
         <Text style={{ color: theme.colors.textMuted }}>This month</Text>
         <Text style={{ color: theme.colors.text, fontSize: 32, fontWeight: '700' }}>
-          {formatAmount(monthTotal, currency)}
+          {formatAmount(monthDisplayCents, displayCurrency)}
         </Text>
       </View>
 

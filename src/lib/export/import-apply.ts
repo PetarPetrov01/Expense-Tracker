@@ -91,6 +91,8 @@ export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: numbe
     }
     await db.insert(expenses).values({
       amountCents: fe.amountCents,
+      currency: 'EUR',                  // imports pre-currency format default to EUR
+      rateToBaseX1e6: 1_000_000,        // 1:1 rate
       categoryId: localCatId,
       note: fe.note,
       occurredAt: new Date(fe.occurredAt),

@@ -59,7 +59,7 @@ export async function buildExport(): Promise<ExportV1> {
   }
 
   const appVersion = (Constants.expoConfig?.version as string | undefined) ?? '0.0.0';
-  const currency = useSettings.getState().currency;
+  const currency = useSettings.getState().displayCurrency;
 
   return {
     format: 'expense-tracker-export',

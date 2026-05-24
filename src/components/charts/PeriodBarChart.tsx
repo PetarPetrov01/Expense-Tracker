@@ -7,7 +7,7 @@ import { useSettings } from '../../stores/settings';
 export type Bar = { label: string; valueCents: number };
 
 export function PeriodBarChart({ bars, title }: { bars: Bar[]; title: string }) {
-  const currency = useSettings(s => s.currency);
+  const currency = useSettings(s => s.displayCurrency);
   if (bars.length === 0) {
     return (
       <View style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md }}>

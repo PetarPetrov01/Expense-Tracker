@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import type { CurrencySymbol } from '../lib/currency';
+import type { CurrencyCode } from '../lib/currency';
+import { isCurrencyCode } from '../lib/currency';
 import { getAllSettings, setSetting } from '../repositories/settings';
 
-const CURRENCIES: readonly CurrencySymbol[] = ['€', '$', '£', 'лв'] as const;
-function parseCurrency(raw: string | undefined): CurrencySymbol {
-  return (CURRENCIES as readonly string[]).includes(raw ?? '') ? (raw as CurrencySymbol) : '€';
+function parseDisplayCurrency(raw: string | undefined): CurrencyCode {
+  if (raw && isCurrencyCode(raw)) return raw;
+  return 'EUR';
 }
 
 function parseCategoryId(raw: string | undefined): number | null {
@@ -15,29 +16,29 @@ function parseCategoryId(raw: string | undefined): number | null {
 
 type State = {
   loaded: boolean;
-  currency: CurrencySymbol;
+  displayCurrency: CurrencyCode;
   lastUsedCategoryId: number | null;
   hydrate: () => Promise<void>;
-  setCurrency: (c: CurrencySymbol) => Promise<void>;
+  setDisplayCurrency: (c: CurrencyCode) => Promise<void>;
   setLastUsedCategoryId: (id: number) => Promise<void>;
 };
 
 export const useSettings = create<State>((set) => ({
   loaded: false,
-  currency: '€',
+  displayCurrency: 'EUR',
   lastUsedCategoryId: null,
   hydrate: async () => {
     const all = await getAllSettings();
     set({
-      currency: parseCurrency(all.currency),
+      displayCurrency: parseDisplayCurrency(all.displayCurrency),
       lastUsedCategoryId: parseCategoryId(all.lastUsedCategoryId),
       loaded: true,
     });
   },
-  setCurrency: async (c) => {
-    set({ currency: c });
-    try { await setSetting('currency', c); }
-    catch (e) { console.warn('[settings] persist currency failed', e); }
+  setDisplayCurrency: async (c) => {
+    set({ displayCurrency: c });
+    try { await setSetting('displayCurrency', c); }
+    catch (e) { console.warn('[settings] persist displayCurrency failed', e); }
   },
   setLastUsedCategoryId: async (id) => {
     set({ lastUsedCategoryId: id });

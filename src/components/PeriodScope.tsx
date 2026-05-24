@@ -12,7 +12,7 @@ import {
 } from '../lib/dates';
 import { ScopePickerSheet } from './ScopePickerSheet';
 
-const SCOPES: { key: Scope; label: string }[] = [
+const ALL_SCOPES: { key: Scope; label: string }[] = [
   { key: 'day',   label: 'Day' },
   { key: 'week',  label: 'Week' },
   { key: 'month', label: 'Month' },
@@ -20,22 +20,27 @@ const SCOPES: { key: Scope; label: string }[] = [
 ];
 
 export function PeriodScope({
-  scope, anchor, onScopeChange, onAnchorChange,
+  scope, anchor, onScopeChange, onAnchorChange, scopes,
 }: {
   scope: Scope;
   anchor: Date;
   onScopeChange: (s: Scope) => void;
   onAnchorChange: (d: Date) => void;
+  scopes?: Scope[];
 }) {
   const weekStart = useSettings(s => s.weekStart);
   const atCurrent = isAtCurrent(scope, anchor, weekStart);
   const forwardOk = canGoForward(scope, anchor, weekStart);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  const visibleScopes = scopes
+    ? ALL_SCOPES.filter(s => scopes.includes(s.key))
+    : ALL_SCOPES;
+
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-        {SCOPES.map(s => (
+        {visibleScopes.map(s => (
           <Pressable
             key={s.key}
             onPress={() => onScopeChange(s.key)}

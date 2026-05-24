@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, View, Text, Pressable, FlatList } from 'react-native';
+import { Modal, View, Text, Pressable, FlatList, InteractionManager } from 'react-native';
 import { router } from 'expo-router';
 import { listCategories } from '../repositories/categories';
 import type { Category } from '../db/schema';
@@ -14,7 +14,7 @@ export function CategoryPickerSheet({ visible, onClose, onSelect }: {
 
   function openManage() {
     onClose();
-    router.push('/category');
+    InteractionManager.runAfterInteractions(() => router.push('/category'));
   }
 
   return (

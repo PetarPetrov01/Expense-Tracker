@@ -50,9 +50,35 @@ export function CategoryMoversList({
       borderRadius: theme.radius.md,
       gap: theme.spacing.md,
     }}>
-      <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>
-        What&apos;s changing
-      </Text>
+      <View style={{ gap: 2 }}>
+        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>
+          What&apos;s changing
+        </Text>
+        {(() => {
+          const topGainer = gainers[0];
+          const topDecliner = decliners[0];
+          const top = topGainer && topDecliner
+            ? (Math.abs(topGainer.delta) >= Math.abs(topDecliner.delta) ? topGainer : topDecliner)
+            : (topGainer ?? topDecliner);
+          if (!top) return null;
+          const isUp = top.delta > 0;
+          let summary: string;
+          if (top.previousCents === 0) {
+            summary = `${top.categoryName} is new`;
+          } else if (top.currentCents === 0) {
+            summary = `${top.categoryName} stopped`;
+          } else {
+            const absPct = Math.abs((top.delta / top.previousCents) * 100);
+            const pctText = absPct < 1 ? '<1%' : `${absPct.toFixed(0)}%`;
+            summary = `${top.categoryName} ${isUp ? 'up' : 'down'} ${pctText} vs previous`;
+          }
+          return (
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              {summary}
+            </Text>
+          );
+        })()}
+      </View>
       {gainers.length > 0 && (
         <View style={{ gap: theme.spacing.sm }}>
           <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Up</Text>

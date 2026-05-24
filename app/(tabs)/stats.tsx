@@ -138,7 +138,7 @@ export default function Stats() {
             currentDisplay={currentDisplay}
             previousDisplay={previousDisplay}
             displayCurrency={displayCurrency}
-            hasPrevious={true}
+            hasPrevious={previousBase > 0}
           />
           <CategoryMoversList
             movers={movers}

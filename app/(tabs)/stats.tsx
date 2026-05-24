@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { sumExpensesInBase } from '../../src/repositories/expenses';
+import { sumExpensesInBase, sumByCategoryInBase } from '../../src/repositories/expenses';
 import { PeriodScope } from '../../src/components/PeriodScope';
 import { DeltaHeader } from '../../src/components/DeltaHeader';
+import { CategoryMoversList, type Mover } from '../../src/components/CategoryMoversList';
 import { EmptyState } from '../../src/components/EmptyState';
-import { scopeRange, stepAnchor, type Scope } from '../../src/lib/dates';
+import { scopeRange, stepAnchor, lastNBuckets, type Scope } from '../../src/lib/dates';
 import { useSettings } from '../../src/stores/settings';
 import { useFxRates } from '../../src/stores/fxRates';
 import { rateLookup, RATE_SCALE } from '../../src/lib/fx';
@@ -22,6 +23,7 @@ export default function Stats() {
   const [anchor, setAnchor] = useState<Date>(new Date());
   const [currentBase, setCurrentBase] = useState(0);
   const [previousBase, setPreviousBase] = useState(0);
+  const [movers, setMovers] = useState<Mover[]>([]);
 
   useFocusEffect(useCallback(() => {
     (async () => {
@@ -29,13 +31,48 @@ export default function Stats() {
       const prevAnchor = stepAnchor(scope, anchor, -1);
       const prev = scopeRange(scope, prevAnchor, weekStart);
 
-      const [currTotal, prevTotal] = await Promise.all([
+      const [currTotal, prevTotal, currCats, prevCats] = await Promise.all([
         sumExpensesInBase(curr.start, curr.end),
         sumExpensesInBase(prev.start, prev.end),
+        sumByCategoryInBase(curr.start, curr.end),
+        sumByCategoryInBase(prev.start, prev.end),
       ]);
 
       setCurrentBase(currTotal);
       setPreviousBase(prevTotal);
+
+      const buckets = lastNBuckets(scope, 6, anchor, weekStart);
+      const bucketCats = await Promise.all(
+        buckets.map(b => sumByCategoryInBase(b.start, b.end)),
+      );
+
+      const ids = new Set<number>();
+      for (const r of currCats) ids.add(r.categoryId);
+      for (const r of prevCats) ids.add(r.categoryId);
+
+      const currMetaMap = new Map(currCats.map(r => [r.categoryId, r]));
+      const prevMetaMap = new Map(prevCats.map(r => [r.categoryId, r]));
+
+      const assembled: Mover[] = [];
+      for (const id of ids) {
+        const meta = currMetaMap.get(id) ?? prevMetaMap.get(id)!;
+        const currentCents = Number(currMetaMap.get(id)?.total ?? 0);
+        const previousCents = Number(prevMetaMap.get(id)?.total ?? 0);
+        const historyCents = bucketCats.map(rows => {
+          const hit = rows.find(r => r.categoryId === id);
+          return hit ? Number(hit.total) : 0;
+        });
+        assembled.push({
+          categoryId: id,
+          categoryName: meta.categoryName,
+          categoryIcon: meta.categoryIcon,
+          categoryColor: meta.categoryColor,
+          currentCents,
+          previousCents,
+          historyCents,
+        });
+      }
+      setMovers(assembled);
     })();
   }, [scope, anchor.getTime(), weekStart]));
 
@@ -65,12 +102,20 @@ export default function Stats() {
           <EmptyState icon="chart-line" title="No data" hint="No expenses in this range." />
         </View>
       ) : (
-        <DeltaHeader
-          currentDisplay={currentDisplay}
-          previousDisplay={previousDisplay}
-          displayCurrency={displayCurrency}
-          hasPrevious={true}
-        />
+        <>
+          <DeltaHeader
+            currentDisplay={currentDisplay}
+            previousDisplay={previousDisplay}
+            displayCurrency={displayCurrency}
+            hasPrevious={true}
+          />
+          <CategoryMoversList
+            movers={movers}
+            displayCurrency={displayCurrency}
+            hasPrevious={previousBase > 0}
+            toDisplay={toDisplay}
+          />
+        </>
       )}
     </ScrollView>
   );

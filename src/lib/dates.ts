@@ -74,3 +74,36 @@ export function bucketKeyFor(period: Period, d: Date): string {
   if (period === 'month') return format(d, 'yyyy-MM');
   return format(d, 'yyyy');
 }
+
+export type Bucket = { key: string; label: string; start: Date; end: Date };
+
+export function lastNBuckets(scope: Scope, n: number, anchor: Date, weekStart: WeekStart): Bucket[] {
+  const out: Bucket[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    // Walk backwards i scope-steps from the anchor, then compute that bucket's range.
+    let a = anchor;
+    for (let k = 0; k < i; k++) a = stepAnchor(scope, a, -1);
+    const { start, end } = scopeRange(scope, a, weekStart);
+    out.push({
+      key: formatBucketKey(scope, start),
+      label: formatBucketLabel(scope, start),
+      start,
+      end,
+    });
+  }
+  return out;
+}
+
+function formatBucketKey(scope: Scope, d: Date): string {
+  if (scope === 'day')   return format(d, 'yyyy-MM-dd');
+  if (scope === 'week')  return format(d, "yyyy-'W'II");
+  if (scope === 'month') return format(d, 'yyyy-MM');
+  return format(d, 'yyyy');
+}
+
+function formatBucketLabel(scope: Scope, d: Date): string {
+  if (scope === 'day')   return format(d, 'd MMM');
+  if (scope === 'week')  return format(d, "'w'I");
+  if (scope === 'month') return format(d, 'MMM');
+  return format(d, 'yyyy');
+}

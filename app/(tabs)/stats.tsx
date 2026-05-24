@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
 import { ScrollView, View, Text, Pressable } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { listExpenses, sumByCategoryInBase } from '../../src/repositories/expenses';
+import { listExpenses } from '../../src/repositories/expenses';
 import { PeriodBarChart, type Bar } from '../../src/components/charts/PeriodBarChart';
-import { CategoryPieChart, type Slice } from '../../src/components/charts/CategoryPieChart';
 import { bucketsFor, bucketKeyFor, rangeFor, type Period } from '../../src/lib/dates';
 import { formatAmount } from '../../src/lib/currency';
 import { useSettings } from '../../src/stores/settings';
@@ -20,7 +19,6 @@ export default function Stats() {
   const rates = useFxRates(s => s.rates);
   const [period, setPeriod] = useState<Period>('month');
   const [bars, setBars] = useState<Bar[]>([]);
-  const [slices, setSlices] = useState<Slice[]>([]);
   const [totalBase, setTotalBase] = useState(0);
 
   useFocusEffect(useCallback(() => {
@@ -38,11 +36,6 @@ export default function Stats() {
       }
       setBars(buckets.map(b => ({ label: b.label, valueCents: baseTotals.get(b.key) ?? 0 })));
       setTotalBase(totalBaseLocal);
-
-      const cats = await sumByCategoryInBase(start, end);
-      setSlices(cats.filter(c => c.total > 0).sort((a, b) => b.total - a.total).map(c => ({
-        categoryId: c.categoryId, categoryName: c.categoryName, categoryColor: c.categoryColor, total: Number(c.total),
-      })));
     })();
   }, [period]));
 
@@ -52,7 +45,6 @@ export default function Stats() {
   const totalDisplay = toDisplay(totalBase);
   const avgDisplay = bars.length ? totalDisplay / bars.length : 0;
   const displayBars: Bar[] = bars.map(b => ({ label: b.label, valueCents: toDisplay(b.valueCents) }));
-  const displaySlices: Slice[] = slices.map(s => ({ ...s, total: toDisplay(s.total) }));
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }} contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
@@ -79,7 +71,6 @@ export default function Stats() {
       </View>
 
       <PeriodBarChart bars={displayBars} title={period === 'day' ? 'Last 7 days' : period === 'month' ? 'Last 12 months' : 'Last 5 years'} />
-      <CategoryPieChart slices={displaySlices} />
     </ScrollView>
   );
 }

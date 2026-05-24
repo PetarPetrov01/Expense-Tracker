@@ -1,7 +1,52 @@
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear,
-  eachDayOfInterval, eachMonthOfInterval, subDays, subMonths, subYears, format } from 'date-fns';
+  startOfWeek, endOfWeek, eachDayOfInterval, eachMonthOfInterval,
+  subDays, addDays, subMonths, addMonths, subWeeks, addWeeks, subYears, addYears,
+  isSameDay, isSameWeek, isSameMonth, isSameYear, format } from 'date-fns';
 
 export type Period = 'day' | 'month' | 'year';
+export type Scope = 'day' | 'week' | 'month' | 'year';
+export type WeekStart = 'mon' | 'sun';
+
+export const weekStartsOn = (w: WeekStart): 0 | 1 => (w === 'mon' ? 1 : 0);
+
+export function scopeRange(scope: Scope, anchor: Date, weekStart: WeekStart): { start: Date; end: Date } {
+  if (scope === 'day') return { start: startOfDay(anchor), end: endOfDay(anchor) };
+  if (scope === 'month') return { start: startOfMonth(anchor), end: endOfMonth(anchor) };
+  if (scope === 'year') return { start: startOfYear(anchor), end: endOfYear(anchor) };
+  const opt = { weekStartsOn: weekStartsOn(weekStart) } as const;
+  return { start: startOfWeek(anchor, opt), end: endOfWeek(anchor, opt) };
+}
+
+export function stepAnchor(scope: Scope, anchor: Date, direction: -1 | 1): Date {
+  if (scope === 'day') return direction < 0 ? subDays(anchor, 1) : addDays(anchor, 1);
+  if (scope === 'week') return direction < 0 ? subWeeks(anchor, 1) : addWeeks(anchor, 1);
+  if (scope === 'year') return direction < 0 ? subYears(anchor, 1) : addYears(anchor, 1);
+  return direction < 0 ? subMonths(anchor, 1) : addMonths(anchor, 1);
+}
+
+export function isAtCurrent(scope: Scope, anchor: Date, weekStart: WeekStart, now: Date = new Date()): boolean {
+  if (scope === 'day') return isSameDay(anchor, now);
+  if (scope === 'month') return isSameMonth(anchor, now);
+  if (scope === 'year') return isSameYear(anchor, now);
+  return isSameWeek(anchor, now, { weekStartsOn: weekStartsOn(weekStart) });
+}
+
+export function canGoForward(scope: Scope, anchor: Date, weekStart: WeekStart, now: Date = new Date()): boolean {
+  return !isAtCurrent(scope, anchor, weekStart, now);
+}
+
+export function formatScope(scope: Scope, anchor: Date, weekStart: WeekStart): string {
+  const currentYear = new Date().getFullYear();
+  if (scope === 'day') return format(anchor, anchor.getFullYear() === currentYear ? 'EEE, d MMM' : 'EEE, d MMM yyyy');
+  if (scope === 'month') return format(anchor, anchor.getFullYear() === currentYear ? 'MMMM' : 'MMMM yyyy');
+  if (scope === 'year') return format(anchor, 'yyyy');
+  const { start, end } = scopeRange('week', anchor, weekStart);
+  const sameMonth = isSameMonth(start, end);
+  const showYear = start.getFullYear() !== currentYear;
+  const endFmt = showYear ? 'd MMM yyyy' : 'd MMM';
+  if (sameMonth) return `${format(start, 'd')}–${format(end, endFmt)}`;
+  return `${format(start, 'd MMM')} – ${format(end, endFmt)}`;
+}
 
 export function rangeFor(period: Period, anchor: Date = new Date()) {
   if (period === 'day') {

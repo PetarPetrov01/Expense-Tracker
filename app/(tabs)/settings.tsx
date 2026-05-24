@@ -11,6 +11,8 @@ import { theme } from '../../src/theme';
 export default function Settings() {
   const displayCurrency = useSettings(s => s.displayCurrency);
   const setDisplayCurrency = useSettings(s => s.setDisplayCurrency);
+  const weekStart = useSettings(s => s.weekStart);
+  const setWeekStart = useSettings(s => s.setWeekStart);
   const fxLastFetchedAt = useFxRates(s => s.fxLastFetchedAt);
   const refreshing = useFxRates(s => s.refreshing);
   const refreshNow = useFxRates(s => s.refreshNow);
@@ -36,6 +38,24 @@ export default function Settings() {
               }}
             >
               <Text style={{ color: '#fff', fontSize: 16 }}>{codeToSymbol(code)} {code}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View>
+        <Text style={{ color: theme.colors.textMuted, marginBottom: theme.spacing.sm }}>Week starts on</Text>
+        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+          {(['mon', 'sun'] as const).map(w => (
+            <Pressable
+              key={w}
+              onPress={() => setWeekStart(w)}
+              style={{
+                flex: 1, padding: theme.spacing.md, borderRadius: theme.radius.md, alignItems: 'center',
+                backgroundColor: weekStart === w ? theme.colors.primary : theme.colors.surface,
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 16 }}>{w === 'mon' ? 'Monday' : 'Sunday'}</Text>
             </Pressable>
           ))}
         </View>

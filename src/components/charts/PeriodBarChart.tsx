@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native';
 import { theme } from '../../theme';
+import { EmptyState } from '../EmptyState';
 
 export type Bar = { label: string; valueCents: number };
 
@@ -11,8 +12,8 @@ export function PeriodBarChart({ bars, title }: { bars: Bar[]; title: string }) 
   if (bars.length === 0) {
     return (
       <View style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md }}>
-        <Text style={{ color: theme.colors.text, fontSize: 16, marginBottom: theme.spacing.sm }}>{title}</Text>
-        <Text style={{ color: theme.colors.textMuted, textAlign: 'center', padding: theme.spacing.lg }}>No data in this range.</Text>
+        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginBottom: theme.spacing.sm }}>{title}</Text>
+        <EmptyState icon="chart-bar" title="No data" hint="No expenses in this range." />
       </View>
     );
   }
@@ -22,11 +23,11 @@ export function PeriodBarChart({ bars, title }: { bars: Bar[]; title: string }) 
 
   return (
     <View style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md }}>
-      <Text style={{ color: theme.colors.text, fontSize: 16, marginBottom: theme.spacing.sm }}>{title}</Text>
+      <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginBottom: theme.spacing.sm }}>{title}</Text>
       <View style={{ flexDirection: 'row', height: PLOT_HEIGHT }}>
         <View style={{ width: Y_AXIS_WIDTH, justifyContent: 'space-between', paddingRight: 4 }}>
           {TICKS.map(t => (
-            <Text key={t} style={{ color: theme.colors.textMuted, fontSize: 10, textAlign: 'right' }}>
+            <Text key={t} style={{ color: theme.colors.text, fontSize: 10, textAlign: 'right' }}>
               {Math.round(niceMax * t)}
             </Text>
           ))}
@@ -57,7 +58,7 @@ export function PeriodBarChart({ bars, title }: { bars: Bar[]; title: string }) 
         {bars.map((b, i) => (
           <Text key={`${b.label}-${i}`} numberOfLines={1} style={{
             flex: 1, textAlign: 'center',
-            color: theme.colors.textMuted, fontSize: 10,
+            color: theme.colors.text, fontSize: 10,
           }}>
             {b.label}
           </Text>

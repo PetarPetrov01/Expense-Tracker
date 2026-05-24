@@ -1,21 +1,15 @@
-import { useEffect, useState } from 'react';
-import { View, Pressable, TextInput } from 'react-native';
+import { useState } from 'react';
+import { View, Pressable, Text } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { theme } from '../theme';
+import { CustomColorPickerSheet } from './CustomColorPickerSheet';
+import { contrastFg } from '../lib/contrast';
 
 const SWATCHES = ['#10b981','#3b82f6','#8b5cf6','#ec4899','#ef4444','#f59e0b','#eab308','#14b8a6','#06b6d4','#6b7280'];
 
-const HEX_RE = /^#[0-9a-fA-F]{6}$/;
-
 export function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
-  const [hexInput, setHexInput] = useState(value);
-
-  useEffect(() => { setHexInput(value); }, [value]);
-
-  function onHexChange(text: string) {
-    setHexInput(text);
-    const normalized = text.startsWith('#') ? text : `#${text}`;
-    if (HEX_RE.test(normalized)) onChange(normalized.toLowerCase());
-  }
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const isPreset = SWATCHES.includes(value);
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
@@ -26,31 +20,34 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (c: 
             borderWidth: value === c ? 3 : 0, borderColor: theme.colors.text,
           }} />
         ))}
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-        <View style={{
-          width: 36, height: 36, borderRadius: 18,
-          backgroundColor: value, borderWidth: 1, borderColor: theme.colors.border,
-        }} />
-        <TextInput
-          value={hexInput}
-          onChangeText={onHexChange}
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={7}
-          placeholder="#RRGGBB"
-          placeholderTextColor={theme.colors.textMuted}
+
+        <Pressable
+          onPress={() => setPickerOpen(true)}
           style={{
-            flex: 1,
-            backgroundColor: theme.colors.surface2,
-            paddingHorizontal: theme.spacing.md,
-            paddingVertical: theme.spacing.sm,
-            borderRadius: theme.radius.md,
-            color: theme.colors.text,
-            fontSize: 14,
-          }}
-        />
+            width: 36, height: 36, borderRadius: 18,
+            backgroundColor: isPreset ? theme.colors.surface2 : value,
+            borderWidth: !isPreset ? 3 : 1,
+            borderColor: !isPreset ? theme.colors.text : theme.colors.border,
+            justifyContent: 'center', alignItems: 'center',
+          }}>
+          <MaterialCommunityIcons
+            name="palette"
+            size={18}
+            color={isPreset ? theme.colors.text : contrastFg(value)}
+          />
+        </Pressable>
       </View>
+
+      {!isPreset && (
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{value.toUpperCase()}</Text>
+      )}
+
+      <CustomColorPickerSheet
+        visible={pickerOpen}
+        initial={value}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={onChange}
+      />
     </View>
   );
 }

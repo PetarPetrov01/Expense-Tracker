@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import { theme } from '../theme';
 import { useSettings } from '../stores/settings';
 import {
@@ -9,33 +10,68 @@ import {
   canGoForward,
   isAtCurrent,
   formatScope,
+  formatCustomRange,
 } from '../lib/dates';
 import { ScopePickerSheet } from './ScopePickerSheet';
+import { CustomRangeSheet } from './CustomRangeSheet';
 
 const ALL_SCOPES: { key: Scope; label: string }[] = [
-  { key: 'day',   label: 'Day' },
-  { key: 'week',  label: 'Week' },
-  { key: 'month', label: 'Month' },
-  { key: 'year',  label: 'Year' },
+  { key: 'day',    label: 'Day' },
+  { key: 'week',   label: 'Week' },
+  { key: 'month',  label: 'Month' },
+  { key: 'year',   label: 'Year' },
+  { key: 'custom', label: 'Custom' },
 ];
+
+function defaultCustomRange(): { start: Date; end: Date } {
+  const now = new Date();
+  return { start: startOfMonth(now), end: endOfMonth(now) };
+}
 
 export function PeriodScope({
   scope, anchor, onScopeChange, onAnchorChange, scopes,
+  customRange, onCustomRangeChange,
 }: {
   scope: Scope;
   anchor: Date;
   onScopeChange: (s: Scope) => void;
   onAnchorChange: (d: Date) => void;
   scopes?: Scope[];
+  customRange?: { start: Date; end: Date } | null;
+  onCustomRangeChange?: (range: { start: Date; end: Date }) => void;
 }) {
   const weekStart = useSettings(s => s.weekStart);
+  const isCustom = scope === 'custom';
   const atCurrent = isAtCurrent(scope, anchor, weekStart);
   const forwardOk = canGoForward(scope, anchor, weekStart);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
 
   const visibleScopes = scopes
     ? ALL_SCOPES.filter(s => scopes.includes(s.key))
     : ALL_SCOPES;
+
+  const label = isCustom && customRange
+    ? formatCustomRange(customRange.start, customRange.end)
+    : formatScope(scope, anchor, weekStart);
+
+  function onChipPress(s: Scope) {
+    if (s === 'custom') {
+      setCustomOpen(true);
+    } else {
+      onScopeChange(s);
+    }
+  }
+
+  function onLabelPress() {
+    if (isCustom) setCustomOpen(true);
+    else setPickerOpen(true);
+  }
+
+  function onCustomApply(range: { start: Date; end: Date }) {
+    onCustomRangeChange?.(range);
+    onScopeChange('custom');
+  }
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
@@ -43,7 +79,7 @@ export function PeriodScope({
         {visibleScopes.map(s => (
           <Pressable
             key={s.key}
-            onPress={() => onScopeChange(s.key)}
+            onPress={() => onChipPress(s.key)}
             style={{
               flex: 1, padding: theme.spacing.sm, borderRadius: theme.radius.pill, alignItems: 'center',
               backgroundColor: scope === s.key ? theme.colors.primary : theme.colors.surface,
@@ -55,22 +91,25 @@ export function PeriodScope({
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-        <ChevronButton icon="chevron-left" onPress={() => onAnchorChange(stepAnchor(scope, anchor, -1))} />
+        {isCustom
+          ? <View style={{ width: 36, height: 36 }} />
+          : <ChevronButton icon="chevron-left" onPress={() => onAnchorChange(stepAnchor(scope, anchor, -1))} />
+        }
         <Pressable
-          onPress={() => setPickerOpen(true)}
+          onPress={onLabelPress}
           style={{ flex: 1, height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}
         >
           <Text style={{
             color: theme.colors.text, fontSize: 15, fontWeight: '600',
           }}>
-            {formatScope(scope, anchor, weekStart)}
+            {label}
           </Text>
           <MaterialCommunityIcons name="chevron-down" size={18} color={theme.colors.text} />
         </Pressable>
-        {forwardOk
+        {!isCustom && forwardOk
           ? <ChevronButton icon="chevron-right" onPress={() => onAnchorChange(stepAnchor(scope, anchor, 1))} />
           : <View style={{ width: 36, height: 36 }} />}
-        {!atCurrent && (
+        {!isCustom && !atCurrent && (
           <Pressable
             onPress={() => onAnchorChange(new Date())}
             style={{
@@ -84,13 +123,22 @@ export function PeriodScope({
         )}
       </View>
 
-      <ScopePickerSheet
-        visible={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onSelect={onAnchorChange}
-        scope={scope}
-        anchor={anchor}
-        weekStart={weekStart}
+      {!isCustom && (
+        <ScopePickerSheet
+          visible={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onSelect={onAnchorChange}
+          scope={scope}
+          anchor={anchor}
+          weekStart={weekStart}
+        />
+      )}
+
+      <CustomRangeSheet
+        visible={customOpen}
+        initial={customRange ?? defaultCustomRange()}
+        onClose={() => setCustomOpen(false)}
+        onApply={onCustomApply}
       />
     </View>
   );

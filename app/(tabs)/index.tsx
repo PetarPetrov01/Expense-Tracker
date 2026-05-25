@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { startOfDay, endOfDay } from 'date-fns';
 import { listExpenses, sumExpensesInBase, sumByCategoryInBase, type ExpenseWithCategory } from '../../src/repositories/expenses';
 import { ExpenseRow } from '../../src/components/ExpenseRow';
 import { EmptyState } from '../../src/components/EmptyState';
@@ -21,12 +22,24 @@ export default function Home() {
 
   const [scope, setScope] = useState<Scope>('month');
   const [anchor, setAnchor] = useState<Date>(new Date());
+  const [customRange, setCustomRange] = useState<{ start: Date; end: Date } | null>(null);
   const [items, setItems] = useState<ExpenseWithCategory[]>([]);
   const [totalBase, setTotalBase] = useState(0);
   const [slices, setSlices] = useState<Slice[]>([]);
 
+  const customStartMs = customRange?.start.getTime();
+  const customEndMs = customRange?.end.getTime();
+
   useFocusEffect(useCallback(() => {
-    const { start, end } = scopeRange(scope, anchor, weekStart);
+    let start: Date;
+    let end: Date;
+    if (scope === 'custom') {
+      if (!customRange) return;
+      start = startOfDay(customRange.start);
+      end = endOfDay(customRange.end);
+    } else {
+      ({ start, end } = scopeRange(scope, anchor, weekStart));
+    }
     listExpenses({ start, end }).then(setItems);
     sumExpensesInBase(start, end).then(setTotalBase);
     sumByCategoryInBase(start, end).then(cats => {
@@ -41,7 +54,8 @@ export default function Home() {
         }))
       );
     });
-  }, [scope, anchor.getTime(), weekStart]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, anchor.getTime(), weekStart, customStartMs, customEndMs]));
 
   const eurToDisplay = rateLookup(rates, displayCurrency);
   const toDisplay = (baseCents: number) => Math.round((baseCents * eurToDisplay) / RATE_SCALE);
@@ -62,6 +76,8 @@ export default function Home() {
               anchor={anchor}
               onScopeChange={setScope}
               onAnchorChange={setAnchor}
+              customRange={customRange}
+              onCustomRangeChange={setCustomRange}
             />
             <View style={{ padding: theme.spacing.md, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md }}>
               <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Total</Text>

@@ -5,10 +5,15 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "expensetracker",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "backgroundColor": "#0f172a",
     "android": {
       "package": "com.expensetracker.app",
+      "backgroundColor": "#0f172a",
+      "navigationBar": {
+        "backgroundColor": "#0f172a"
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#10b981"

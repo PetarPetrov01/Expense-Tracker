@@ -20,7 +20,6 @@ const ALL_SCOPES: { key: Scope; label: string }[] = [
   { key: 'week',   label: 'Week' },
   { key: 'month',  label: 'Month' },
   { key: 'year',   label: 'Year' },
-  { key: 'custom', label: 'Custom' },
 ];
 
 function defaultCustomRange(): { start: Date; end: Date } {
@@ -50,17 +49,14 @@ export function PeriodScope({
   const visibleScopes = scopes
     ? ALL_SCOPES.filter(s => scopes.includes(s.key))
     : ALL_SCOPES;
+  const customAllowed = scopes ? scopes.includes('custom') : true;
 
   const label = isCustom && customRange
     ? formatCustomRange(customRange.start, customRange.end)
     : formatScope(scope, anchor, weekStart);
 
   function onChipPress(s: Scope) {
-    if (s === 'custom') {
-      setCustomOpen(true);
-    } else {
-      onScopeChange(s);
-    }
+    onScopeChange(s);
   }
 
   function onLabelPress() {
@@ -88,6 +84,19 @@ export function PeriodScope({
             <Text style={{ color: '#fff' }}>{s.label}</Text>
           </Pressable>
         ))}
+        {customAllowed && (
+          <Pressable
+            onPress={() => setCustomOpen(true)}
+            hitSlop={6}
+            style={{
+              width: 40, height: 36, borderRadius: theme.radius.pill,
+              alignItems: 'center', justifyContent: 'center',
+              backgroundColor: isCustom ? theme.colors.primary : theme.colors.surface,
+            }}
+          >
+            <MaterialCommunityIcons name="calendar-range" size={18} color="#fff" />
+          </Pressable>
+        )}
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>

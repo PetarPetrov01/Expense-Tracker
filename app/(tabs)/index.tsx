@@ -87,7 +87,7 @@ export default function Home() {
         data={items}
         keyExtractor={(e) => String(e.id)}
         renderItem={({ item }) => <ExpenseRow e={item} />}
-        contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: 96 }}
+        contentContainerStyle={{ padding: theme.spacing.lg, gap: 10, paddingBottom: 96 }}
         ListHeaderComponent={
           <View style={{ gap: theme.spacing.lg, marginBottom: theme.spacing.md }}>
             <PeriodScope

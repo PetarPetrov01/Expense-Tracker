@@ -24,11 +24,11 @@ export function ExpenseRow({ e }: { e: ExpenseWithCategory }) {
   return (
     <Link href={`/expense/${e.id}`} asChild>
       <Pressable style={{
-        flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md,
-        padding: theme.spacing.md, backgroundColor: theme.colors.surface,
-        borderRadius: theme.radius.md, marginBottom: theme.spacing.sm,
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        padding: 10, backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.md,
       }}>
-        <CategoryIcon icon={e.categoryIcon} color={e.categoryColor} />
+        <CategoryIcon icon={e.categoryIcon} color={e.categoryColor} size={36} />
         <View style={{ flex: 1 }}>
           <Text style={{ color: theme.colors.text, fontSize: 16 }}>{e.categoryName}</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>

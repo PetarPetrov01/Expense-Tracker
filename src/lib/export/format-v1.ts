@@ -9,10 +9,17 @@ export const ExportV1CategorySchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+export const ExportV1TagSchema = z.object({
+  stableId: z.string().min(1),
+  name: z.string().min(1),
+  createdAt: z.string().datetime(),
+});
+
 export const ExportV1ExpenseSchema = z.object({
   contentHash: z.string().regex(/^sha1:[0-9a-f]{40}$/),
   amountCents: z.number().int().nonnegative(),
   categoryStableId: z.string().min(1),
+  tagStableId: z.string().min(1).nullable().default(null),
   note: z.string().nullable(),
   occurredAt: z.string().datetime(),
   createdAt: z.string().datetime(),
@@ -25,10 +32,12 @@ export const ExportV1Schema = z.object({
   exportedAt: z.string().datetime(),
   currency: z.string().min(1),
   categories: z.array(ExportV1CategorySchema),
+  tags: z.array(ExportV1TagSchema).default([]),
   expenses: z.array(ExportV1ExpenseSchema),
 });
 
 export type ExportV1Category = z.infer<typeof ExportV1CategorySchema>;
+export type ExportV1Tag = z.infer<typeof ExportV1TagSchema>;
 export type ExportV1Expense = z.infer<typeof ExportV1ExpenseSchema>;
 export type ExportV1 = z.infer<typeof ExportV1Schema>;
 

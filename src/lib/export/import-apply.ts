@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client';
-import { categories, expenses } from '../../db/schema';
+import { categories, expenses, tags } from '../../db/schema';
 import { computeExpenseContentHash } from './hash';
-import type { ExportV1, ExportV1Category } from './format-v1';
+import type { ExportV1, ExportV1Category, ExportV1Tag } from './format-v1';
 
 const UNKNOWN_CATEGORY = {
   name: 'Imported (unknown)',
@@ -31,6 +31,24 @@ async function resolveCategoryToLocalId(fc: ExportV1Category): Promise<number> {
   return row.id;
 }
 
+async function resolveTagToLocalId(ft: ExportV1Tag): Promise<number> {
+  const bySid = await db.select().from(tags).where(eq(tags.stableId, ft.stableId)).limit(1);
+  if (bySid[0]) return bySid[0].id;
+  const allLocal = await db.select().from(tags);
+  const target = ft.name.trim().toLowerCase();
+  const byName = allLocal.find(t => t.name.trim().toLowerCase() === target);
+  if (byName) {
+    await db.update(tags).set({ stableId: ft.stableId }).where(eq(tags.id, byName.id));
+    return byName.id;
+  }
+  const [row] = await db.insert(tags).values({
+    name: ft.name,
+    stableId: ft.stableId,
+    createdAt: new Date(ft.createdAt),
+  }).returning({ id: tags.id });
+  return row.id;
+}
+
 async function getOrCreateUnknownCategoryId(): Promise<number> {
   const sid = 'user:imported-unknown';
   const existing = await db.select().from(categories).where(eq(categories.stableId, sid)).limit(1);
@@ -53,12 +71,21 @@ export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: numbe
     localCatIdBySid.set(fc.stableId, await resolveCategoryToLocalId(fc));
   }
 
+  const localTagIdBySid = new Map<string, number>();
+  for (const ft of doc.tags) {
+    localTagIdBySid.set(ft.stableId, await resolveTagToLocalId(ft));
+  }
+
   const localExps = await db.select().from(expenses);
   const localCats = await db.select().from(categories);
   const sidByLocalCatId = new Map<number, string>();
   for (const c of localCats) {
     if (c.stableId) sidByLocalCatId.set(c.id, c.stableId);
   }
+
+  const localTags = await db.select().from(tags);
+  const sidByLocalTagId = new Map<number, string>();
+  for (const t of localTags) sidByLocalTagId.set(t.id, t.stableId);
   const localHashes = new Set<string>();
   for (const e of localExps) {
     const sid = sidByLocalCatId.get(e.categoryId);
@@ -67,6 +94,7 @@ export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: numbe
       amountCents: e.amountCents,
       occurredAtIso: new Date(e.occurredAt).toISOString(),
       categoryStableId: sid,
+      tagStableId: e.tagId != null ? (sidByLocalTagId.get(e.tagId) ?? null) : null,
       note: e.note,
     });
     localHashes.add(h);
@@ -89,11 +117,13 @@ export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: numbe
     if (localCatId === undefined) {
       throw new Error(`No local category id for stableId ${fe.categoryStableId}`);
     }
+    const localTagId = fe.tagStableId != null ? (localTagIdBySid.get(fe.tagStableId) ?? null) : null;
     await db.insert(expenses).values({
       amountCents: fe.amountCents,
       currency: 'EUR',                  // imports pre-currency format default to EUR
       rateToBaseX1e6: 1_000_000,        // 1:1 rate
       categoryId: localCatId,
+      tagId: localTagId,
       note: fe.note,
       occurredAt: new Date(fe.occurredAt),
       createdAt: new Date(fe.createdAt),
@@ -108,6 +138,7 @@ export async function applyReplaceImport(doc: ExportV1): Promise<{ inserted: num
   const expCountBefore = (await db.select().from(expenses)).length;
   const catCountBefore = (await db.select().from(categories)).length;
   await db.delete(expenses);
+  await db.delete(tags);
   await db.delete(categories);
   const result = await applyMergeImport(doc);
   return { ...result, wiped: { expenses: expCountBefore, categories: catCountBefore } };

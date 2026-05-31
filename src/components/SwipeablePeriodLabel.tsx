@@ -76,6 +76,11 @@ export function SwipeablePeriodLabel({
     transform: [{ translateX: -width * activeIdxSV.value + tx.value }],
   }));
 
+  function commitAt(newIdx: number) {
+    const newAnchor = stepAnchorBy(scope, baseAnchor, newIdx - SIDE);
+    onAnchorChange(newAnchor);
+  }
+
   const gesture = Gesture.Pan()
     .enabled(width > 0)
     .activeOffsetX([-15, 15])
@@ -104,15 +109,13 @@ export function SwipeablePeriodLabel({
         activeIdxSV.value = newIdx;
         tx.value = tx.value - width;
         tx.value = withTiming(0, { duration: SNAP_DURATION });
-        const newAnchor = stepAnchorBy(scope, baseAnchor, newIdx - SIDE);
-        runOnJS(onAnchorChange)(newAnchor);
+        runOnJS(commitAt)(newIdx);
       } else if (goNext) {
         const newIdx = idx + 1;
         activeIdxSV.value = newIdx;
         tx.value = tx.value + width;
         tx.value = withTiming(0, { duration: SNAP_DURATION });
-        const newAnchor = stepAnchorBy(scope, baseAnchor, newIdx - SIDE);
-        runOnJS(onAnchorChange)(newAnchor);
+        runOnJS(commitAt)(newIdx);
       } else {
         tx.value = withTiming(0, { duration: SNAP_DURATION });
       }

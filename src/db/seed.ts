@@ -1,4 +1,4 @@
-import { db } from './client';
+import { db, runInTransaction } from './client';
 import { categories } from './schema';
 import { count } from 'drizzle-orm';
 import { seedStableIdFor } from '../lib/export/stable-id';
@@ -16,13 +16,17 @@ const SEED: Array<{ name: string; icon: string; color: string }> = [
 ];
 
 export async function seedIfEmpty() {
-  const [{ value }] = await db.select({ value: count() }).from(categories);
-  if (value > 0) return;
-  const now = new Date();
-  await db.insert(categories).values(SEED.map(c => ({
-    ...c,
-    isSeed: true,
-    stableId: seedStableIdFor(c.name),
-    createdAt: now,
-  })));
+  // Count-then-insert in one transaction so two concurrent callers can't both see an
+  // empty table and double-seed the default categories.
+  await runInTransaction(async () => {
+    const [{ value }] = await db.select({ value: count() }).from(categories);
+    if (value > 0) return;
+    const now = new Date();
+    await db.insert(categories).values(SEED.map(c => ({
+      ...c,
+      isSeed: true,
+      stableId: seedStableIdFor(c.name),
+      createdAt: now,
+    })));
+  });
 }

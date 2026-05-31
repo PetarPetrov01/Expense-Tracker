@@ -33,7 +33,14 @@ export function rateLookup(
   if (code === 'EUR') return RATE_SCALE;
   const cached = rates[code];
   if (cached && cached > 0) return cached;
-  return FALLBACK_RATES_X1E6[code as Exclude<CurrencyCode, 'EUR'>];
+  const fallback = FALLBACK_RATES_X1E6[code as Exclude<CurrencyCode, 'EUR'>];
+  // Unknown/unsupported code: fall back to 1:1 rather than returning undefined, which
+  // would propagate as NaN through every amount calculation and silently corrupt totals.
+  if (!fallback || fallback <= 0) {
+    if (__DEV__) console.warn(`rateLookup: no rate for "${code}", defaulting to 1:1`);
+    return RATE_SCALE;
+  }
+  return fallback;
 }
 
 // Convert entryCurrency → EUR. Rate is stored at write-time.

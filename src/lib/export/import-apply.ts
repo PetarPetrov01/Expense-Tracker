@@ -1,14 +1,9 @@
 import { eq } from 'drizzle-orm';
-import { db } from '../../db/client';
+import { db, runInTransaction } from '../../db/client';
 import { categories, expenses, tags } from '../../db/schema';
+import { getOrCreateUncategorizedId } from '../../repositories/categories';
 import { computeExpenseContentHash } from './hash';
 import type { ExportV1, ExportV1Category, ExportV1Tag } from './format-v1';
-
-const UNKNOWN_CATEGORY = {
-  name: 'Imported (unknown)',
-  icon: 'help-circle',
-  color: '#9ca3af',
-};
 
 async function resolveCategoryToLocalId(fc: ExportV1Category): Promise<number> {
   const bySid = await db.select().from(categories).where(eq(categories.stableId, fc.stableId)).limit(1);
@@ -49,22 +44,7 @@ async function resolveTagToLocalId(ft: ExportV1Tag): Promise<number> {
   return row.id;
 }
 
-async function getOrCreateUnknownCategoryId(): Promise<number> {
-  const sid = 'user:imported-unknown';
-  const existing = await db.select().from(categories).where(eq(categories.stableId, sid)).limit(1);
-  if (existing[0]) return existing[0].id;
-  const [row] = await db.insert(categories).values({
-    name: UNKNOWN_CATEGORY.name,
-    icon: UNKNOWN_CATEGORY.icon,
-    color: UNKNOWN_CATEGORY.color,
-    isSeed: false,
-    stableId: sid,
-    createdAt: new Date(),
-  }).returning({ id: categories.id });
-  return row.id;
-}
-
-export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: number; skipped: number }> {
+async function mergeImportInner(doc: ExportV1): Promise<{ inserted: number; skipped: number }> {
   const fileCatBySid = new Map(doc.categories.map(c => [c.stableId, c]));
   const localCatIdBySid = new Map<string, number>();
   for (const fc of doc.categories) {
@@ -111,7 +91,7 @@ export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: numbe
     }
     let localCatId = localCatIdBySid.get(fe.categoryStableId);
     if (localCatId === undefined && !fileCatBySid.has(fe.categoryStableId)) {
-      if (unknownCategoryLocalId === null) unknownCategoryLocalId = await getOrCreateUnknownCategoryId();
+      if (unknownCategoryLocalId === null) unknownCategoryLocalId = await getOrCreateUncategorizedId();
       localCatId = unknownCategoryLocalId;
     }
     if (localCatId === undefined) {
@@ -120,8 +100,9 @@ export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: numbe
     const localTagId = fe.tagStableId != null ? (localTagIdBySid.get(fe.tagStableId) ?? null) : null;
     await db.insert(expenses).values({
       amountCents: fe.amountCents,
-      currency: 'EUR',                  // imports pre-currency format default to EUR
-      rateToBaseX1e6: 1_000_000,        // 1:1 rate
+      // v2 backups carry the real currency/rate; v1 backups default to EUR @ 1:1 via the schema.
+      currency: fe.currency,
+      rateToBaseX1e6: fe.rateToBaseX1e6,
       categoryId: localCatId,
       tagId: localTagId,
       note: fe.note,
@@ -134,12 +115,20 @@ export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: numbe
   return { inserted, skipped };
 }
 
+// Public entry points run inside a single transaction so a mid-import failure leaves the
+// database untouched rather than half-imported (critical for replace, which wipes first).
+export async function applyMergeImport(doc: ExportV1): Promise<{ inserted: number; skipped: number }> {
+  return runInTransaction(() => mergeImportInner(doc));
+}
+
 export async function applyReplaceImport(doc: ExportV1): Promise<{ inserted: number; skipped: number; wiped: { expenses: number; categories: number } }> {
-  const expCountBefore = (await db.select().from(expenses)).length;
-  const catCountBefore = (await db.select().from(categories)).length;
-  await db.delete(expenses);
-  await db.delete(tags);
-  await db.delete(categories);
-  const result = await applyMergeImport(doc);
-  return { ...result, wiped: { expenses: expCountBefore, categories: catCountBefore } };
+  return runInTransaction(async () => {
+    const expCountBefore = (await db.select().from(expenses)).length;
+    const catCountBefore = (await db.select().from(categories)).length;
+    await db.delete(expenses);
+    await db.delete(tags);
+    await db.delete(categories);
+    const result = await mergeImportInner(doc);
+    return { ...result, wiped: { expenses: expCountBefore, categories: catCountBefore } };
+  });
 }

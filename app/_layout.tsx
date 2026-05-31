@@ -1,12 +1,17 @@
 import { Stack } from 'expo-router';
-import { Text, View } from 'react-native';
+import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { useRunMigrations } from '../src/db/migrate';
 import { seedIfEmpty } from '../src/db/seed';
 import { useSettings } from '../src/stores/settings';
 import { useFxRates } from '../src/stores/fxRates';
 import { theme } from '../src/theme';
+
+// Keep the native splash up until the DB + stores are ready, so there's no white flash.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.setOptions({ fade: true });
 
 export default function RootLayout() {
   const { success, error } = useRunMigrations();
@@ -30,8 +35,37 @@ export default function RootLayout() {
     hydrateFx().then(() => refreshFxIfStale());
   }, [seeded, hydrateFx, refreshFxIfStale]);
 
-  if (error) return <View><Text>Migration error: {error.message}</Text></View>;
-  if (!success || !seeded || !settingsLoaded || !fxLoaded) return <View><Text>Loading…</Text></View>;
+  const ready = success && seeded && settingsLoaded && fxLoaded;
+
+  useEffect(() => {
+    if (ready || error) SplashScreen.hideAsync().catch(() => {});
+  }, [ready, error]);
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.bg, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl }}>
+        <Text style={{ color: theme.colors.danger, fontSize: 16, fontWeight: '600', marginBottom: theme.spacing.sm }}>
+          Couldn’t start the app
+        </Text>
+        <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>{error.message}</Text>
+      </View>
+    );
+  }
+
+  // Splash stays visible while !ready; this themed view is just a safety net (e.g. if the
+  // native splash is dismissed early) so the user never sees a bare white screen.
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.bg, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.xl }}>
+        <Image
+          source={require('../assets/images/splash-icon.png')}
+          style={{ width: 120, height: 120 }}
+          resizeMode="contain"
+        />
+        <ActivityIndicator color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.colors.bg }}>

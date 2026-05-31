@@ -48,3 +48,11 @@ app-example
 /android/keystores/
 /android/gradle.properties
 /.local-signing-backup/
+
+# build artifacts
+*.apk
+build-apk.log
+*.stackdump
+
+# personal data imports (contain financial data — never commit)
+expense-tracker-import*.json

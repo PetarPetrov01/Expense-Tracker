@@ -63,6 +63,8 @@ export async function buildExport(): Promise<ExportV1> {
     exportedExpenses.push({
       contentHash,
       amountCents: e.amountCents,
+      currency: e.currency,
+      rateToBaseX1e6: e.rateToBaseX1e6,
       categoryStableId: sid,
       tagStableId,
       note: e.note,

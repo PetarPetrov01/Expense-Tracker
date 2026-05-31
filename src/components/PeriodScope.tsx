@@ -101,6 +101,18 @@ export function PeriodScope({
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+        {!isCustom && (
+          <View
+            pointerEvents="none"
+            style={{
+              paddingHorizontal: 12, height: 36, borderRadius: 18,
+              alignItems: 'center', justifyContent: 'center',
+              opacity: 0,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600' }}>Today</Text>
+          </View>
+        )}
         {isCustom
           ? <View style={{ width: 36, height: 36 }} />
           : <ChevronButton icon="chevron-left" onPress={() => onAnchorChange(stepAnchor(scope, anchor, -1))} />

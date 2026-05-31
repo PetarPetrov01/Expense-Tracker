@@ -18,7 +18,7 @@ export type Slice = {
 };
 
 type Mode = 'pie' | 'bar';
-const SLOT_PIE = 190;
+const SLOT_PIE = 220;
 const SLOT_BAR = 72;
 const BAR_HEIGHT = 28;
 
@@ -72,7 +72,7 @@ export function CategoryPieChart({ slices }: { slices: Slice[] }) {
           { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
           pieStyle,
         ]}>
-          <PieChart data={pieData} donut radius={85} innerRadius={52}
+          <PieChart data={pieData} donut radius={100} innerRadius={68}
             innerCircleColor={theme.colors.surface}
             centerLabelComponent={() => (
               <View style={{ alignItems: 'center' }}>

@@ -4,7 +4,6 @@ import Animated, {
   useSharedValue, useAnimatedStyle, useAnimatedReaction, withTiming, runOnJS,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { theme } from '../theme';
 import { type Scope, type WeekStart, stepAnchorBy, formatScope } from '../lib/dates';
 
@@ -122,37 +121,34 @@ export function SwipeablePeriodLabel({
     });
 
   return (
-    <View style={{ flex: 1, height: 36, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-      <View
-        onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-        style={{ flex: 1, height: 36, overflow: 'hidden' }}
-      >
-        <GestureDetector gesture={gesture}>
-          <Animated.View
-            style={[
-              { flexDirection: 'row', width: Math.max(width * N, 0), height: '100%' },
-              animStyle,
-            ]}
-          >
-            {labels.map((label, i) => (
-              <Pressable
-                key={i}
-                onPress={onPress}
-                style={{ width, height: '100%', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Text style={labelText} numberOfLines={1}>{label}</Text>
-              </Pressable>
-            ))}
-          </Animated.View>
-        </GestureDetector>
-      </View>
-      <Pressable
-        onPress={onPress}
-        hitSlop={8}
-        style={{ height: 36, justifyContent: 'center', paddingHorizontal: 2 }}
-      >
-        <MaterialCommunityIcons name="chevron-down" size={18} color={theme.colors.text} />
-      </Pressable>
+    <View
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{
+        flex: 1,
+        height: 36,
+        overflow: 'hidden',
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.pill,
+      }}
+    >
+      <GestureDetector gesture={gesture}>
+        <Animated.View
+          style={[
+            { flexDirection: 'row', width: Math.max(width * N, 0), height: '100%' },
+            animStyle,
+          ]}
+        >
+          {labels.map((label, i) => (
+            <Pressable
+              key={i}
+              onPress={onPress}
+              style={{ width, height: '100%', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={labelText} numberOfLines={1}>{label}</Text>
+            </Pressable>
+          ))}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }

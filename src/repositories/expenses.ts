@@ -38,6 +38,31 @@ export async function listExpenses(opts?: { start?: Date; end?: Date; limit?: nu
   return rows;
 }
 
+export async function getExpense(id: number): Promise<ExpenseWithCategory | undefined> {
+  const rows = await db
+    .select({
+      id: schema.expenses.id,
+      amountCents: schema.expenses.amountCents,
+      currency: schema.expenses.currency,
+      rateToBaseX1e6: schema.expenses.rateToBaseX1e6,
+      categoryId: schema.expenses.categoryId,
+      tagId: schema.expenses.tagId,
+      note: schema.expenses.note,
+      occurredAt: schema.expenses.occurredAt,
+      createdAt: schema.expenses.createdAt,
+      categoryName: schema.categories.name,
+      categoryIcon: schema.categories.icon,
+      categoryColor: schema.categories.color,
+      tagName: schema.tags.name,
+    })
+    .from(schema.expenses)
+    .innerJoin(schema.categories, eq(schema.expenses.categoryId, schema.categories.id))
+    .leftJoin(schema.tags, eq(schema.expenses.tagId, schema.tags.id))
+    .where(eq(schema.expenses.id, id))
+    .limit(1);
+  return rows[0];
+}
+
 export async function createExpense(
   input: Omit<NewExpense, 'id' | 'createdAt'>
 ): Promise<number> {

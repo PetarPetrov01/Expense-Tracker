@@ -7,7 +7,7 @@ import { CategoryQuickGrid } from '../../src/components/CategoryQuickGrid';
 import { CategoryPickerSheet } from '../../src/components/CategoryPickerSheet';
 import { TagPicker } from '../../src/components/TagPicker';
 import { parseAmountToCents } from '../../src/lib/currency';
-import { listExpenses, updateExpense, deleteExpense } from '../../src/repositories/expenses';
+import { getExpense, updateExpense, deleteExpense } from '../../src/repositories/expenses';
 import { getCategory, listTopCategoriesByUsage } from '../../src/repositories/categories';
 import { promoteSelectedToGrid } from '../../src/lib/categoryGrid';
 import { useFxRates } from '../../src/stores/fxRates';
@@ -44,8 +44,7 @@ export default function EditExpense() {
 
   useEffect(() => {
     (async () => {
-      const rows = await listExpenses({ limit: 1000 });
-      const found = rows.find(r => r.id === expenseId);
+      const found = await getExpense(expenseId);
       if (!found) return router.back();
       setAmount((found.amountCents / 100).toFixed(2));
       setNote(found.note ?? '');

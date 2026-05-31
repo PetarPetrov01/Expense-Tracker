@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, Pressable } from 'react-native';
+import { Alert, ScrollView, Text, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { AmountInput } from '../../src/components/AmountInput';
 import { DateField } from '../../src/components/DateField';
@@ -83,7 +83,15 @@ export default function EditExpense() {
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }} contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+      contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg, paddingBottom: theme.spacing.xl * 2 }}
+      keyboardShouldPersistTaps="handled"
+    >
       <AmountInput
         value={amount}
         onChange={setAmount}
@@ -120,5 +128,6 @@ export default function EditExpense() {
 
       <CategoryPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={setCategory} />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

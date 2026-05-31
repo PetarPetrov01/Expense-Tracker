@@ -39,7 +39,12 @@ export function TagPicker({
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Tag (optional)</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.sm }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ gap: theme.spacing.sm }}
+      >
         {ordered.map(t => {
           const selected = t.id === selectedTagId;
           return (
@@ -53,26 +58,30 @@ export function TagPicker({
           );
         })}
 
-        {adding ? (
-          <View style={pillStyle(false)}>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              onSubmitEditing={submitNew}
-              onBlur={submitNew}
-              autoFocus
-              placeholder="New tag"
-              placeholderTextColor={theme.colors.textMuted}
-              style={{ color: theme.colors.text, minWidth: 80, padding: 0 }}
-            />
-          </View>
-        ) : (
-          <Pressable onPress={() => setAdding(true)} style={pillStyle(false)}>
-            <MaterialCommunityIcons name="plus" size={16} color={theme.colors.text} />
-            <Text style={{ color: theme.colors.text, marginLeft: 4 }}>Add tag</Text>
-          </Pressable>
-        )}
+        <Pressable onPress={() => setAdding(a => !a)} style={pillStyle(false)}>
+          <MaterialCommunityIcons name="plus" size={16} color={theme.colors.text} />
+          <Text style={{ color: theme.colors.text, marginLeft: 4 }}>Add tag</Text>
+        </Pressable>
       </ScrollView>
+
+      {adding && (
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          onSubmitEditing={submitNew}
+          onBlur={submitNew}
+          autoFocus
+          returnKeyType="done"
+          placeholder="New tag name"
+          placeholderTextColor={theme.colors.textMuted}
+          style={{
+            backgroundColor: theme.colors.surface,
+            padding: theme.spacing.md,
+            borderRadius: theme.radius.md,
+            color: theme.colors.text,
+          }}
+        />
+      )}
     </View>
   );
 }

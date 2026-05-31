@@ -19,6 +19,7 @@ export async function listExpenses(opts?: { start?: Date; end?: Date; limit?: nu
       currency: schema.expenses.currency,
       rateToBaseX1e6: schema.expenses.rateToBaseX1e6,
       categoryId: schema.expenses.categoryId,
+      tagId: schema.expenses.tagId,
       note: schema.expenses.note,
       occurredAt: schema.expenses.occurredAt,
       createdAt: schema.expenses.createdAt,

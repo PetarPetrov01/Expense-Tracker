@@ -127,13 +127,15 @@ export function PeriodScope({
         {!isCustom && forwardOk
           ? <ChevronButton icon="chevron-right" onPress={() => onAnchorChange(stepAnchor(scope, anchor, 1))} />
           : <View style={{ width: 36, height: 36 }} />}
-        {!isCustom && !atCurrent && (
+        {!isCustom && (
           <Pressable
             onPress={() => onAnchorChange(new Date())}
+            disabled={atCurrent}
             style={{
               paddingHorizontal: 12, height: 36, borderRadius: 18,
               backgroundColor: theme.colors.primary,
               alignItems: 'center', justifyContent: 'center',
+              opacity: atCurrent ? 0 : 1,
             }}
           >
             <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Today</Text>

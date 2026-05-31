@@ -9,7 +9,7 @@ export function ImportPreviewModal({ preview, onCancel, onConfirm }: {
 }) {
   const { doc, expensesToInsert, expensesToSkip, categoriesNew, categoriesMatchedByName, expensesUnknownCategory } = preview;
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onCancel}>
+    <Modal visible animationType="fade" transparent onRequestClose={onCancel}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
         <View style={{ backgroundColor: theme.colors.bg, padding: theme.spacing.lg, gap: theme.spacing.md, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
           <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600' }}>Import preview</Text>

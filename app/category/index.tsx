@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { View, Text, FlatList, Pressable, Alert } from 'react-native';
+import { View, Text, FlatList, Pressable } from 'react-native';
 import { Link, useFocusEffect, router } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { listCategories, deleteCategory } from '../../src/repositories/categories';
+import { listCategories } from '../../src/repositories/categories';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import type { Category } from '../../src/db/schema';
 import { theme } from '../../src/theme';
@@ -10,17 +10,6 @@ import { theme } from '../../src/theme';
 export default function Categories() {
   const [items, setItems] = useState<Category[]>([]);
   useFocusEffect(useCallback(() => { listCategories().then(setItems); }, []));
-
-  function onLongPress(c: Category) {
-    if (c.isSeed) return Alert.alert('Seed categories cannot be deleted');
-    Alert.alert(`Delete "${c.name}"?`, 'Expenses in this category will be orphaned.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        await deleteCategory(c.id);
-        setItems(await listCategories());
-      } },
-    ]);
-  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -31,7 +20,6 @@ export default function Categories() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/category/edit', params: { id: String(item.id) } })}
-            onLongPress={() => onLongPress(item)}
             style={{
               flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md,
               padding: theme.spacing.md, backgroundColor: theme.colors.surface,

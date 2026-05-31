@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
-import { View, Text, Pressable, Alert, ScrollView, TextInput } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, Text, TextInput, Pressable } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { AmountInput } from '../../src/components/AmountInput';
 import { DateField } from '../../src/components/DateField';
-import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { CategoryQuickGrid } from '../../src/components/CategoryQuickGrid';
 import { CategoryPickerSheet } from '../../src/components/CategoryPickerSheet';
 import { parseAmountToCents } from '../../src/lib/currency';
 import { listExpenses, updateExpense, deleteExpense } from '../../src/repositories/expenses';
-import { getCategory } from '../../src/repositories/categories';
+import { getCategory, listTopCategoriesByUsage } from '../../src/repositories/categories';
+import { promoteSelectedToGrid } from '../../src/lib/categoryGrid';
 import { useFxRates } from '../../src/stores/fxRates';
 import { useSettings } from '../../src/stores/settings';
 import { deriveRateToBaseX1e6 } from '../../src/lib/fx';
@@ -26,7 +27,12 @@ export default function EditExpense() {
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [topCategories, setTopCategories] = useState<Category[]>([]);
   const rates = useFxRates(s => s.rates);
+
+  useEffect(() => {
+    listTopCategoriesByUsage({ sinceDays: 90, limit: 7 }).then(setTopCategories);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -42,6 +48,11 @@ export default function EditExpense() {
       if (cat) setCategory(cat);
     })();
   }, [expenseId]);
+
+  const gridCategories = useMemo(
+    () => promoteSelectedToGrid(topCategories, category),
+    [topCategories, category],
+  );
 
   async function save() {
     const cents = parseAmountToCents(amount);
@@ -76,14 +87,12 @@ export default function EditExpense() {
         onCurrencyChange={setEntryCurrency}
       />
 
-      <Pressable onPress={() => setPickerOpen(true)} style={{
-        backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md,
-        flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md,
-      }}>
-        {category
-          ? <><CategoryIcon icon={category.icon} color={category.color} size={32} /><Text style={{ color: theme.colors.text, fontSize: 16 }}>{category.name}</Text></>
-          : <Text style={{ color: theme.colors.textMuted }}>Choose category</Text>}
-      </Pressable>
+      <CategoryQuickGrid
+        categories={gridCategories}
+        selectedId={category?.id ?? null}
+        onSelect={setCategory}
+        onMore={() => setPickerOpen(true)}
+      />
 
       <DateField value={date} onChange={setDate} />
 

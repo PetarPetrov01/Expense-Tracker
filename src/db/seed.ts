@@ -13,7 +13,6 @@ const SEED: Array<{ name: string; icon: string; color: string }> = [
   { name: 'Health',        icon: 'heart-pulse',       color: '#ef4444' },
   { name: 'Shopping',      icon: 'shopping',          color: '#14b8a6' },
   { name: 'Travel',        icon: 'airplane',          color: '#06b6d4' },
-  { name: 'Other',         icon: 'dots-horizontal',   color: '#6b7280' },
 ];
 
 export async function seedIfEmpty() {

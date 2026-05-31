@@ -4,13 +4,16 @@ import { startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear,
   isSameDay, isSameWeek, isSameMonth, isSameYear, format } from 'date-fns';
 
 export type Period = 'day' | 'month' | 'year';
-export type Scope = 'day' | 'week' | 'month' | 'year';
+export type Scope = 'day' | 'week' | 'month' | 'year' | 'custom';
 export type WeekStart = 'mon' | 'sun';
 
 export const weekStartsOn = (w: WeekStart): 0 | 1 => (w === 'mon' ? 1 : 0);
 
+// For 'custom', consumers must use `customRange` directly rather than this
+// function — the anchor alone cannot express an arbitrary range. We return a
+// degenerate single-day range as a safe fallback if called.
 export function scopeRange(scope: Scope, anchor: Date, weekStart: WeekStart): { start: Date; end: Date } {
-  if (scope === 'day') return { start: startOfDay(anchor), end: endOfDay(anchor) };
+  if (scope === 'day' || scope === 'custom') return { start: startOfDay(anchor), end: endOfDay(anchor) };
   if (scope === 'month') return { start: startOfMonth(anchor), end: endOfMonth(anchor) };
   if (scope === 'year') return { start: startOfYear(anchor), end: endOfYear(anchor) };
   const opt = { weekStartsOn: weekStartsOn(weekStart) } as const;
@@ -18,13 +21,24 @@ export function scopeRange(scope: Scope, anchor: Date, weekStart: WeekStart): { 
 }
 
 export function stepAnchor(scope: Scope, anchor: Date, direction: -1 | 1): Date {
+  if (scope === 'custom') return anchor;
   if (scope === 'day') return direction < 0 ? subDays(anchor, 1) : addDays(anchor, 1);
   if (scope === 'week') return direction < 0 ? subWeeks(anchor, 1) : addWeeks(anchor, 1);
   if (scope === 'year') return direction < 0 ? subYears(anchor, 1) : addYears(anchor, 1);
   return direction < 0 ? subMonths(anchor, 1) : addMonths(anchor, 1);
 }
 
+// Step the anchor by any integer offset (positive = forward, negative = backward).
+export function stepAnchorBy(scope: Scope, anchor: Date, offset: number): Date {
+  if (offset === 0 || scope === 'custom') return anchor;
+  const dir: -1 | 1 = offset > 0 ? 1 : -1;
+  let cur = anchor;
+  for (let i = 0; i < Math.abs(offset); i++) cur = stepAnchor(scope, cur, dir);
+  return cur;
+}
+
 export function isAtCurrent(scope: Scope, anchor: Date, weekStart: WeekStart, now: Date = new Date()): boolean {
+  if (scope === 'custom') return true;
   if (scope === 'day') return isSameDay(anchor, now);
   if (scope === 'month') return isSameMonth(anchor, now);
   if (scope === 'year') return isSameYear(anchor, now);
@@ -32,6 +46,7 @@ export function isAtCurrent(scope: Scope, anchor: Date, weekStart: WeekStart, no
 }
 
 export function canGoForward(scope: Scope, anchor: Date, weekStart: WeekStart, now: Date = new Date()): boolean {
+  if (scope === 'custom') return false;
   return !isAtCurrent(scope, anchor, weekStart, now);
 }
 
@@ -40,12 +55,27 @@ export function formatScope(scope: Scope, anchor: Date, weekStart: WeekStart): s
   if (scope === 'day') return format(anchor, anchor.getFullYear() === currentYear ? 'EEE, d MMM' : 'EEE, d MMM yyyy');
   if (scope === 'month') return format(anchor, anchor.getFullYear() === currentYear ? 'MMMM' : 'MMMM yyyy');
   if (scope === 'year') return format(anchor, 'yyyy');
+  if (scope === 'custom') return 'Custom range';
   const { start, end } = scopeRange('week', anchor, weekStart);
   const sameMonth = isSameMonth(start, end);
   const showYear = start.getFullYear() !== currentYear;
   const endFmt = showYear ? 'd MMM yyyy' : 'd MMM';
   if (sameMonth) return `${format(start, 'd')}–${format(end, endFmt)}`;
   return `${format(start, 'd MMM')} – ${format(end, endFmt)}`;
+}
+
+export function formatCustomRange(start: Date, end: Date): string {
+  const currentYear = new Date().getFullYear();
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const sameMonth = isSameMonth(start, end);
+  const showYear = start.getFullYear() !== currentYear || end.getFullYear() !== currentYear;
+  if (sameMonth) {
+    return `${format(start, 'd')}–${format(end, showYear ? 'd MMM yyyy' : 'd MMM')}`;
+  }
+  if (sameYear) {
+    return `${format(start, 'd MMM')} – ${format(end, showYear ? 'd MMM yyyy' : 'd MMM')}`;
+  }
+  return `${format(start, 'd MMM yyyy')} – ${format(end, 'd MMM yyyy')}`;
 }
 
 export function rangeFor(period: Period, anchor: Date = new Date()) {

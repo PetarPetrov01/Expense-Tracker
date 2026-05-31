@@ -15,7 +15,7 @@ export function ReplaceConfirmModal({ preview, onCancel, onConfirm }: {
   const { doc } = preview;
   const expensesAfterReplace = doc.expenses.length;
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onCancel}>
+    <Modal visible animationType="fade" transparent onRequestClose={onCancel}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}

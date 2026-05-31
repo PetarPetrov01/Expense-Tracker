@@ -69,7 +69,7 @@ export function CategoryPieChart({ slices }: { slices: Slice[] }) {
             centerLabelComponent={() => (
               <View style={{ alignItems: 'center' }}>
                 <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Total</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>{formatAmount(total, currency)}</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: '700' }}>{formatAmount(total, currency)}</Text>
               </View>
             )}
           />

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, Pressable } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, ScrollView, Text, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { AmountInput } from '../../src/components/AmountInput';
 import { DateField } from '../../src/components/DateField';
 import { CategoryQuickGrid } from '../../src/components/CategoryQuickGrid';
 import { CategoryPickerSheet } from '../../src/components/CategoryPickerSheet';
+import { TagPicker } from '../../src/components/TagPicker';
 import { parseAmountToCents } from '../../src/lib/currency';
 import { createExpense } from '../../src/repositories/expenses';
 import { getCategory, listTopCategoriesByUsage } from '../../src/repositories/categories';
@@ -22,9 +23,16 @@ export default function NewExpense() {
   const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(displayCurrency);
   const [category, setCategory] = useState<Category | null>(null);
   const [note, setNote] = useState('');
+  const [tagId, setTagId] = useState<number | null>(null);
   const [date, setDate] = useState(new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [topCategories, setTopCategories] = useState<Category[]>([]);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollToBottom = () => {
+    // Delay so the keyboard / newly shown input has laid out before we scroll.
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  };
 
   const lastUsedCategoryId = useSettings(s => s.lastUsedCategoryId);
   const setLastUsedCategoryId = useSettings(s => s.setLastUsedCategoryId);
@@ -58,6 +66,7 @@ export default function NewExpense() {
       rateToBaseX1e6,
       categoryId: category.id,
       note: note || null,
+      tagId,
       occurredAt: date,
     });
     setLastUsedCategoryId(category.id);
@@ -65,7 +74,16 @@ export default function NewExpense() {
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }} contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+    <ScrollView
+      ref={scrollRef}
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+      contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg, paddingBottom: theme.spacing.xl * 2 }}
+      keyboardShouldPersistTaps="handled"
+    >
       <AmountInput
         value={amount}
         onChange={setAmount}
@@ -85,10 +103,13 @@ export default function NewExpense() {
       <TextInput
         value={note}
         onChangeText={setNote}
+        onFocus={scrollToBottom}
         placeholder="Note (optional)"
         placeholderTextColor={theme.colors.textMuted}
         style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md, color: theme.colors.text }}
       />
+
+      <TagPicker selectedTagId={tagId} onChange={setTagId} onAddFocus={scrollToBottom} />
 
       <Pressable onPress={save} style={{ backgroundColor: theme.colors.primary, padding: theme.spacing.md, borderRadius: theme.radius.md, alignItems: 'center' }}>
         <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Save expense</Text>
@@ -96,5 +117,6 @@ export default function NewExpense() {
 
       <CategoryPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={setCategory} />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

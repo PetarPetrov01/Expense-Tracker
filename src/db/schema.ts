@@ -10,12 +10,20 @@ export const categories = sqliteTable('categories', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
+export const tags = sqliteTable('tags', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  stableId: text('stable_id').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
 export const expenses = sqliteTable('expenses', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   amountCents: integer('amount_cents').notNull(),
   currency: text('currency').notNull(),                    // ISO code (EUR/USD/GBP/BGN)
   rateToBaseX1e6: integer('rate_to_base_x1e6').notNull(),  // entryCurrency→EUR, x1e6
   categoryId: integer('category_id').notNull().references(() => categories.id),
+  tagId: integer('tag_id').references(() => tags.id),
   note: text('note'),
   occurredAt: integer('occurred_at', { mode: 'timestamp_ms' }).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
@@ -37,6 +45,8 @@ export const appSettings = sqliteTable('app_settings', {
 
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
+export type Tag = typeof tags.$inferSelect;
+export type NewTag = typeof tags.$inferInsert;
 export type Expense = typeof expenses.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;
 export type FxRateRow = typeof fxRates.$inferSelect;

@@ -6,6 +6,7 @@ export type ExpenseWithCategory = Expense & {
   categoryName: string;
   categoryIcon: string;
   categoryColor: string;
+  tagName: string | null;
 };
 
 export async function listExpenses(opts?: { start?: Date; end?: Date; limit?: number }): Promise<ExpenseWithCategory[]> {
@@ -19,15 +20,18 @@ export async function listExpenses(opts?: { start?: Date; end?: Date; limit?: nu
       currency: schema.expenses.currency,
       rateToBaseX1e6: schema.expenses.rateToBaseX1e6,
       categoryId: schema.expenses.categoryId,
+      tagId: schema.expenses.tagId,
       note: schema.expenses.note,
       occurredAt: schema.expenses.occurredAt,
       createdAt: schema.expenses.createdAt,
       categoryName: schema.categories.name,
       categoryIcon: schema.categories.icon,
       categoryColor: schema.categories.color,
+      tagName: schema.tags.name,
     })
     .from(schema.expenses)
     .innerJoin(schema.categories, eq(schema.expenses.categoryId, schema.categories.id))
+    .leftJoin(schema.tags, eq(schema.expenses.tagId, schema.tags.id))
     .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(schema.expenses.occurredAt))
     .limit(opts?.limit ?? 1000);
@@ -45,7 +49,7 @@ export async function createExpense(
 
 export async function updateExpense(
   id: number,
-  patch: Partial<Pick<Expense, 'amountCents' | 'currency' | 'rateToBaseX1e6' | 'categoryId' | 'note' | 'occurredAt'>>,
+  patch: Partial<Pick<Expense, 'amountCents' | 'currency' | 'rateToBaseX1e6' | 'categoryId' | 'tagId' | 'note' | 'occurredAt'>>,
 ) {
   await db.update(schema.expenses).set(patch).where(eq(schema.expenses.id, id));
 }
@@ -79,4 +83,20 @@ export async function sumByCategoryInBase(start: Date, end: Date) {
     .innerJoin(schema.categories, eq(schema.expenses.categoryId, schema.categories.id))
     .where(and(gte(schema.expenses.occurredAt, start), lte(schema.expenses.occurredAt, end)))
     .groupBy(schema.categories.id);
+}
+
+// Per-(category, tag) base-cents totals for a range. tagId/tagName are null for the
+// untagged remainder of a category. Caller groups by categoryId and converts to display.
+export async function sumByCategoryAndTagInBase(start: Date, end: Date) {
+  return db
+    .select({
+      categoryId: schema.expenses.categoryId,
+      tagId:      schema.expenses.tagId,
+      tagName:    schema.tags.name,
+      total: sql<number>`COALESCE(SUM(CAST(ROUND(${schema.expenses.amountCents} * ${schema.expenses.rateToBaseX1e6} / 1000000.0) AS INTEGER)), 0)`,
+    })
+    .from(schema.expenses)
+    .leftJoin(schema.tags, eq(schema.expenses.tagId, schema.tags.id))
+    .where(and(gte(schema.expenses.occurredAt, start), lte(schema.expenses.occurredAt, end)))
+    .groupBy(schema.expenses.categoryId, schema.expenses.tagId);
 }

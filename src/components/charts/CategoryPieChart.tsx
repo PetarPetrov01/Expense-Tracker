@@ -8,16 +8,24 @@ import { formatAmount } from '../../lib/currency';
 import { useSettings } from '../../stores/settings';
 import { EmptyState } from '../EmptyState';
 
-export type Slice = { categoryId: number; categoryName: string; categoryColor: string; total: number };
+export type TagBreakdownEntry = { tagId: number | null; tagName: string | null; total: number };
+export type Slice = {
+  categoryId: number;
+  categoryName: string;
+  categoryColor: string;
+  total: number;
+  tagBreakdown?: TagBreakdownEntry[];
+};
 
 type Mode = 'pie' | 'bar';
-const SLOT_PIE = 190;
+const SLOT_PIE = 220;
 const SLOT_BAR = 72;
 const BAR_HEIGHT = 28;
 
 export function CategoryPieChart({ slices }: { slices: Slice[] }) {
   const currency = useSettings(s => s.displayCurrency);
   const [mode, setMode] = useState<Mode>('pie');
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const progress = useSharedValue(0);
 
   const total = slices.reduce((s, x) => s + x.total, 0);
@@ -64,7 +72,7 @@ export function CategoryPieChart({ slices }: { slices: Slice[] }) {
           { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
           pieStyle,
         ]}>
-          <PieChart data={pieData} donut radius={85} innerRadius={52}
+          <PieChart data={pieData} donut radius={100} innerRadius={68}
             innerCircleColor={theme.colors.surface}
             centerLabelComponent={() => (
               <View style={{ alignItems: 'center' }}>
@@ -96,16 +104,47 @@ export function CategoryPieChart({ slices }: { slices: Slice[] }) {
       </Animated.View>
 
       <View style={{ gap: 6, marginTop: theme.spacing.md }}>
-        {slices.map(s => (
-          <View key={s.categoryId} style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: s.categoryColor, marginRight: 8 }} />
-            <Text style={{ flex: 1, color: theme.colors.text }}>{s.categoryName}</Text>
-            <Text style={{ color: theme.colors.text }}>{formatAmount(s.total, currency)}</Text>
-            <Text style={{ color: theme.colors.textMuted, width: 48, textAlign: 'right' }}>
-              {Math.round((s.total / total) * 100)}%
-            </Text>
-          </View>
-        ))}
+        {slices.map(s => {
+          const canExpand = !!s.tagBreakdown?.length;
+          const expanded = expandedId === s.categoryId;
+          return (
+            <View key={s.categoryId}>
+              <Pressable
+                onPress={() => canExpand && setExpandedId(expanded ? null : s.categoryId)}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: s.categoryColor, marginRight: 8 }} />
+                <Text style={{ flex: 1, color: theme.colors.text }}>{s.categoryName}</Text>
+                <Text style={{ color: theme.colors.text }}>{formatAmount(s.total, currency)}</Text>
+                <Text style={{ color: theme.colors.textMuted, width: 48, textAlign: 'right' }}>
+                  {Math.round((s.total / total) * 100)}%
+                </Text>
+                <View style={{ width: 20, alignItems: 'center' }}>
+                  {canExpand && (
+                    <MaterialCommunityIcons
+                      name={expanded ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color={theme.colors.textMuted}
+                    />
+                  )}
+                </View>
+              </Pressable>
+
+              {expanded && s.tagBreakdown!.map(b => (
+                <View
+                  key={b.tagId ?? 'none'}
+                  style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 20, marginTop: 4 }}
+                >
+                  <Text style={{ flex: 1, color: theme.colors.textMuted }}>
+                    {b.tagName ?? 'No tag'}
+                  </Text>
+                  <Text style={{ color: theme.colors.textMuted }}>{formatAmount(b.total, currency)}</Text>
+                  <View style={{ width: 48 + 20 }} />
+                </View>
+              ))}
+            </View>
+          );
+        })}
       </View>
     </View>
   );

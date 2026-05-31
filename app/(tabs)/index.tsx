@@ -3,7 +3,7 @@ import { View, Text, FlatList, Pressable } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { startOfDay, endOfDay } from 'date-fns';
-import { listExpenses, sumByCategoryInBase, type ExpenseWithCategory } from '../../src/repositories/expenses';
+import { listExpenses, sumByCategoryInBase, sumByCategoryAndTagInBase, type ExpenseWithCategory } from '../../src/repositories/expenses';
 import { ExpenseRow } from '../../src/components/ExpenseRow';
 import { EmptyState } from '../../src/components/EmptyState';
 import { PeriodScope } from '../../src/components/PeriodScope';
@@ -28,6 +28,9 @@ export default function Home() {
   const customStartMs = customRange?.start.getTime();
   const customEndMs = customRange?.end.getTime();
 
+  const eurToDisplay = rateLookup(rates, displayCurrency);
+  const toDisplay = (baseCents: number) => Math.round((baseCents * eurToDisplay) / RATE_SCALE);
+
   useFocusEffect(useCallback(() => {
     let start: Date;
     let end: Date;
@@ -39,24 +42,44 @@ export default function Home() {
       ({ start, end } = scopeRange(scope, anchor, weekStart));
     }
     listExpenses({ start, end }).then(setItems);
-    sumByCategoryInBase(start, end).then(cats => {
+    Promise.all([
+      sumByCategoryInBase(start, end),
+      sumByCategoryAndTagInBase(start, end),
+    ]).then(([cats, breakdown]) => {
+      // Group breakdown rows by category. Only attach tagBreakdown when the category
+      // has at least one tagged expense in range. "No tag" remainder goes last.
+      const byCat = new Map<number, { tagId: number | null; tagName: string | null; total: number }[]>();
+      for (const r of breakdown) {
+        const list = byCat.get(r.categoryId) ?? [];
+        list.push({ tagId: r.tagId, tagName: r.tagName, total: Number(r.total) });
+        byCat.set(r.categoryId, list);
+      }
       setSlices(cats
         .filter(c => c.total > 0)
         .sort((a, b) => b.total - a.total)
-        .map(c => ({
-          categoryId: c.categoryId,
-          categoryName: c.categoryName,
-          categoryColor: c.categoryColor,
-          total: Number(c.total),
-        }))
+        .map(c => {
+          const rows = byCat.get(c.categoryId) ?? [];
+          const hasTagged = rows.some(r => r.tagId !== null);
+          const tagBreakdown = hasTagged
+            ? [...rows]
+                .sort((a, b) => {
+                  if ((a.tagId === null) !== (b.tagId === null)) return a.tagId === null ? 1 : -1;
+                  return b.total - a.total;
+                })
+                .map(r => ({ tagId: r.tagId, tagName: r.tagName, total: toDisplay(r.total) }))
+            : undefined;
+          return {
+            categoryId: c.categoryId,
+            categoryName: c.categoryName,
+            categoryColor: c.categoryColor,
+            total: toDisplay(Number(c.total)),
+            tagBreakdown,
+          };
+        })
       );
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, anchor.getTime(), weekStart, customStartMs, customEndMs]));
-
-  const eurToDisplay = rateLookup(rates, displayCurrency);
-  const toDisplay = (baseCents: number) => Math.round((baseCents * eurToDisplay) / RATE_SCALE);
-  const displaySlices: Slice[] = slices.map(s => ({ ...s, total: toDisplay(s.total) }));
+  }, [scope, anchor.getTime(), weekStart, customStartMs, customEndMs, rates]));
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -75,7 +98,7 @@ export default function Home() {
               customRange={customRange}
               onCustomRangeChange={setCustomRange}
             />
-            <CategoryPieChart slices={displaySlices} />
+            <CategoryPieChart slices={slices} />
             <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginTop: theme.spacing.sm }}>
               History
             </Text>

@@ -115,13 +115,12 @@ export function PeriodScope({
           </Pressable>
         ) : (
           <SwipeablePeriodLabel
-            prevLabel={formatScope(scope, stepAnchor(scope, anchor, -1), weekStart)}
-            currLabel={label}
-            nextLabel={forwardOk ? formatScope(scope, stepAnchor(scope, anchor, 1), weekStart) : ''}
+            anchor={anchor}
+            scope={scope}
+            weekStart={weekStart}
             canPrev
             canNext={forwardOk}
-            onPrev={() => onAnchorChange(stepAnchor(scope, anchor, -1))}
-            onNext={() => onAnchorChange(stepAnchor(scope, anchor, 1))}
+            onAnchorChange={onAnchorChange}
             onPress={onLabelPress}
           />
         )}

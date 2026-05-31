@@ -1,48 +1,80 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue, useAnimatedStyle, useAnimatedReaction, withTiming, runOnJS,
+} from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { theme } from '../theme';
+import { type Scope, type WeekStart, stepAnchorBy, formatScope } from '../lib/dates';
 
+const SIDE = 5;
+const N = SIDE * 2 + 1;
 const SNAP_DURATION = 200;
 const VELOCITY_TRIGGER = 350;
 const THRESHOLD_FRACTION = 0.25;
 
 export function SwipeablePeriodLabel({
-  prevLabel,
-  currLabel,
-  nextLabel,
+  anchor,
+  scope,
+  weekStart,
   canPrev,
   canNext,
-  onPrev,
-  onNext,
+  onAnchorChange,
   onPress,
 }: {
-  prevLabel: string;
-  currLabel: string;
-  nextLabel: string;
+  anchor: Date;
+  scope: Scope;
+  weekStart: WeekStart;
   canPrev: boolean;
   canNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
+  onAnchorChange: (a: Date) => void;
   onPress: () => void;
 }) {
   const [width, setWidth] = useState(0);
+  const [baseAnchor, setBaseAnchor] = useState(anchor);
+
+  const activeIdxSV = useSharedValue(SIDE);
   const tx = useSharedValue(0);
 
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -width + tx.value }],
-  }));
+  // Mirror the UI-thread activeIdx to a JS-side ref so we can compare against
+  // externally-driven anchor changes without racing.
+  const activeIdxRef = useRef(SIDE);
+  function syncActiveIdxRef(v: number) {
+    activeIdxRef.current = v;
+  }
+  useAnimatedReaction(
+    () => activeIdxSV.value,
+    (v) => { runOnJS(syncActiveIdxRef)(v); },
+  );
 
-  function commitPrev() {
-    onPrev();
-    tx.value = 0;
-  }
-  function commitNext() {
-    onNext();
-    tx.value = 0;
-  }
+  // If parent's anchor changes for a reason other than our own swipe (e.g.
+  // chevron buttons, Today, Custom apply), rebase the strip on it.
+  useEffect(() => {
+    const ourAnchor = stepAnchorBy(scope, baseAnchor, activeIdxRef.current - SIDE);
+    if (ourAnchor.getTime() !== anchor.getTime()) {
+      setBaseAnchor(anchor);
+      activeIdxSV.value = SIDE;
+      activeIdxRef.current = SIDE;
+      tx.value = 0;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchor, scope]);
+
+  // Static labels — only recomputed when baseAnchor / scope / weekStart change.
+  // During a swipe commit, these do NOT change, so there is no race between
+  // label re-render and translation.
+  const labels = useMemo(
+    () =>
+      Array.from({ length: N }, (_, i) =>
+        formatScope(scope, stepAnchorBy(scope, baseAnchor, i - SIDE), weekStart),
+      ),
+    [scope, baseAnchor, weekStart],
+  );
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -width * activeIdxSV.value + tx.value }],
+  }));
 
   const gesture = Gesture.Pan()
     .enabled(width > 0)
@@ -51,48 +83,73 @@ export function SwipeablePeriodLabel({
     .onUpdate((e) => {
       'worklet';
       let v = e.translationX;
-      if (v > 0 && !canPrev) v = 0;
-      if (v < 0 && !canNext) v = 0;
+      const idx = activeIdxSV.value;
+      if (v > 0 && (!canPrev || idx === 0)) v = 0;
+      if (v < 0 && (!canNext || idx === N - 1)) v = 0;
       tx.value = v;
     })
     .onEnd((e) => {
       'worklet';
       const threshold = width * THRESHOLD_FRACTION;
-      if (canPrev && (tx.value > threshold || e.velocityX > VELOCITY_TRIGGER)) {
-        tx.value = withTiming(width, { duration: SNAP_DURATION }, (finished) => {
-          if (finished) runOnJS(commitPrev)();
-        });
-      } else if (canNext && (tx.value < -threshold || e.velocityX < -VELOCITY_TRIGGER)) {
-        tx.value = withTiming(-width, { duration: SNAP_DURATION }, (finished) => {
-          if (finished) runOnJS(commitNext)();
-        });
+      const idx = activeIdxSV.value;
+      const goPrev =
+        canPrev && idx > 0 &&
+        (tx.value > threshold || e.velocityX > VELOCITY_TRIGGER);
+      const goNext =
+        canNext && idx < N - 1 &&
+        (tx.value < -threshold || e.velocityX < -VELOCITY_TRIGGER);
+
+      if (goPrev) {
+        const newIdx = idx - 1;
+        activeIdxSV.value = newIdx;
+        tx.value = tx.value - width;
+        tx.value = withTiming(0, { duration: SNAP_DURATION });
+        const newAnchor = stepAnchorBy(scope, baseAnchor, newIdx - SIDE);
+        runOnJS(onAnchorChange)(newAnchor);
+      } else if (goNext) {
+        const newIdx = idx + 1;
+        activeIdxSV.value = newIdx;
+        tx.value = tx.value + width;
+        tx.value = withTiming(0, { duration: SNAP_DURATION });
+        const newAnchor = stepAnchorBy(scope, baseAnchor, newIdx - SIDE);
+        runOnJS(onAnchorChange)(newAnchor);
       } else {
         tx.value = withTiming(0, { duration: SNAP_DURATION });
       }
     });
 
   return (
-    <View
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-      style={{ flex: 1, height: 36, overflow: 'hidden' }}
-    >
-      <GestureDetector gesture={gesture}>
-        <Animated.View style={[
-          { flexDirection: 'row', width: width * 3, height: '100%' },
-          animStyle,
-        ]}>
-          <View style={cell(width)}>
-            <Text style={labelText} numberOfLines={1}>{prevLabel}</Text>
-          </View>
-          <Pressable onPress={onPress} style={[cell(width), { flexDirection: 'row', gap: 4 }]}>
-            <Text style={labelText} numberOfLines={1}>{currLabel}</Text>
-            <MaterialCommunityIcons name="chevron-down" size={18} color={theme.colors.text} />
-          </Pressable>
-          <View style={cell(width)}>
-            <Text style={labelText} numberOfLines={1}>{nextLabel}</Text>
-          </View>
-        </Animated.View>
-      </GestureDetector>
+    <View style={{ flex: 1, height: 36, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+      <View
+        onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+        style={{ flex: 1, height: 36, overflow: 'hidden' }}
+      >
+        <GestureDetector gesture={gesture}>
+          <Animated.View
+            style={[
+              { flexDirection: 'row', width: Math.max(width * N, 0), height: '100%' },
+              animStyle,
+            ]}
+          >
+            {labels.map((label, i) => (
+              <Pressable
+                key={i}
+                onPress={onPress}
+                style={{ width, height: '100%', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={labelText} numberOfLines={1}>{label}</Text>
+              </Pressable>
+            ))}
+          </Animated.View>
+        </GestureDetector>
+      </View>
+      <Pressable
+        onPress={onPress}
+        hitSlop={8}
+        style={{ height: 36, justifyContent: 'center', paddingHorizontal: 2 }}
+      >
+        <MaterialCommunityIcons name="chevron-down" size={18} color={theme.colors.text} />
+      </Pressable>
     </View>
   );
 }
@@ -102,12 +159,3 @@ const labelText = {
   fontSize: 15,
   fontWeight: '600' as const,
 };
-
-function cell(w: number) {
-  return {
-    width: w,
-    height: '100%' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  };
-}

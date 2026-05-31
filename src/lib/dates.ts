@@ -28,6 +28,15 @@ export function stepAnchor(scope: Scope, anchor: Date, direction: -1 | 1): Date 
   return direction < 0 ? subMonths(anchor, 1) : addMonths(anchor, 1);
 }
 
+// Step the anchor by any integer offset (positive = forward, negative = backward).
+export function stepAnchorBy(scope: Scope, anchor: Date, offset: number): Date {
+  if (offset === 0 || scope === 'custom') return anchor;
+  const dir: -1 | 1 = offset > 0 ? 1 : -1;
+  let cur = anchor;
+  for (let i = 0; i < Math.abs(offset); i++) cur = stepAnchor(scope, cur, dir);
+  return cur;
+}
+
 export function isAtCurrent(scope: Scope, anchor: Date, weekStart: WeekStart, now: Date = new Date()): boolean {
   if (scope === 'custom') return true;
   if (scope === 'day') return isSameDay(anchor, now);

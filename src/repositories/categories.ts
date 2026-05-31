@@ -1,6 +1,26 @@
-import { db, schema } from '../db/client';
+import { db, schema, runInTransaction } from '../db/client';
 import { and, asc, eq, gte, sql } from 'drizzle-orm';
 import type { Category, NewCategory } from '../db/schema';
+
+// Stable id for the system "Uncategorized" bucket. Expenses whose category is deleted
+// (and imported expenses with no resolvable category) are reassigned here so their
+// amounts are never lost. Shared by deleteCategory and the import path.
+export const UNCATEGORIZED_STABLE_ID = 'system:uncategorized';
+
+export async function getOrCreateUncategorizedId(): Promise<number> {
+  const existing = await db.select().from(schema.categories)
+    .where(eq(schema.categories.stableId, UNCATEGORIZED_STABLE_ID)).limit(1);
+  if (existing[0]) return existing[0].id;
+  const [row] = await db.insert(schema.categories).values({
+    name: 'Uncategorized',
+    icon: 'help-circle',
+    color: '#9ca3af',
+    isSeed: false,
+    stableId: UNCATEGORIZED_STABLE_ID,
+    createdAt: new Date(),
+  }).returning({ id: schema.categories.id });
+  return row.id;
+}
 
 export async function listCategories(): Promise<Category[]> {
   return db.select().from(schema.categories).orderBy(asc(schema.categories.name));
@@ -22,8 +42,19 @@ export async function updateCategory(id: number, patch: Partial<Pick<Category, '
   await db.update(schema.categories).set(patch).where(eq(schema.categories.id, id));
 }
 
+// Reassign this category's expenses to the system "Uncategorized" bucket, then delete
+// the category. Done in one transaction so expenses are never orphaned (foreign keys
+// are enforced, so a bare delete of an in-use category would otherwise throw).
 export async function deleteCategory(id: number) {
-  await db.delete(schema.categories).where(eq(schema.categories.id, id));
+  await runInTransaction(async () => {
+    const uncategorizedId = await getOrCreateUncategorizedId();
+    if (uncategorizedId !== id) {
+      await db.update(schema.expenses)
+        .set({ categoryId: uncategorizedId })
+        .where(eq(schema.expenses.categoryId, id));
+    }
+    await db.delete(schema.categories).where(eq(schema.categories.id, id));
+  });
 }
 
 // Top categories ranked by usage in the last `sinceDays` days.

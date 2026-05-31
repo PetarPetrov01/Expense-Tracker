@@ -31,7 +31,7 @@ export default function CategoryEdit() {
   }
 
   function confirmDelete() {
-    Alert.alert(`Delete "${name}"?`, 'Expenses in this category will be orphaned.', [
+    Alert.alert(`Delete "${name}"?`, 'Expenses in this category will be moved to "Uncategorized".', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         await deleteCategory(Number(id));

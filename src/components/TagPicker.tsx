@@ -8,9 +8,11 @@ import { theme } from '../theme';
 export function TagPicker({
   selectedTagId,
   onChange,
+  onAddFocus,
 }: {
   selectedTagId: number | null;
   onChange: (tagId: number | null) => void;
+  onAddFocus?: () => void;
 }) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [adding, setAdding] = useState(false);
@@ -70,6 +72,7 @@ export function TagPicker({
           onChangeText={setDraft}
           onSubmitEditing={submitNew}
           onBlur={submitNew}
+          onFocus={onAddFocus}
           autoFocus
           returnKeyType="done"
           placeholder="New tag name"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { AmountInput } from '../../src/components/AmountInput';
@@ -31,6 +31,12 @@ export default function EditExpense() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [topCategories, setTopCategories] = useState<Category[]>([]);
   const rates = useFxRates(s => s.rates);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollToBottom = () => {
+    // Delay so the keyboard / newly shown input has laid out before we scroll.
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  };
 
   useEffect(() => {
     listTopCategoriesByUsage({ sinceDays: 90, limit: 7 }).then(setTopCategories);
@@ -88,6 +94,7 @@ export default function EditExpense() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
     <ScrollView
+      ref={scrollRef}
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
       contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg, paddingBottom: theme.spacing.xl * 2 }}
       keyboardShouldPersistTaps="handled"
@@ -111,12 +118,13 @@ export default function EditExpense() {
       <TextInput
         value={note}
         onChangeText={setNote}
+        onFocus={scrollToBottom}
         placeholder="Note (optional)"
         placeholderTextColor={theme.colors.textMuted}
         style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md, color: theme.colors.text }}
       />
 
-      <TagPicker selectedTagId={tagId} onChange={setTagId} />
+      <TagPicker selectedTagId={tagId} onChange={setTagId} onAddFocus={scrollToBottom} />
 
       <Pressable onPress={save} style={{ backgroundColor: theme.colors.primary, padding: theme.spacing.md, borderRadius: theme.radius.md, alignItems: 'center' }}>
         <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Save changes</Text>

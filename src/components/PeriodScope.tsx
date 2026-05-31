@@ -14,6 +14,7 @@ import {
 } from '../lib/dates';
 import { ScopePickerSheet } from './ScopePickerSheet';
 import { CustomRangeSheet } from './CustomRangeSheet';
+import { SwipeablePeriodLabel } from './SwipeablePeriodLabel';
 
 const ALL_SCOPES: { key: Scope; label: string }[] = [
   { key: 'day',    label: 'Day' },
@@ -104,17 +105,26 @@ export function PeriodScope({
           ? <View style={{ width: 36, height: 36 }} />
           : <ChevronButton icon="chevron-left" onPress={() => onAnchorChange(stepAnchor(scope, anchor, -1))} />
         }
-        <Pressable
-          onPress={onLabelPress}
-          style={{ flex: 1, height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-        >
-          <Text style={{
-            color: theme.colors.text, fontSize: 15, fontWeight: '600',
-          }}>
-            {label}
-          </Text>
-          <MaterialCommunityIcons name="chevron-down" size={18} color={theme.colors.text} />
-        </Pressable>
+        {isCustom ? (
+          <Pressable
+            onPress={onLabelPress}
+            style={{ flex: 1, height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+          >
+            <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '600' }}>{label}</Text>
+            <MaterialCommunityIcons name="chevron-down" size={18} color={theme.colors.text} />
+          </Pressable>
+        ) : (
+          <SwipeablePeriodLabel
+            prevLabel={formatScope(scope, stepAnchor(scope, anchor, -1), weekStart)}
+            currLabel={label}
+            nextLabel={forwardOk ? formatScope(scope, stepAnchor(scope, anchor, 1), weekStart) : ''}
+            canPrev
+            canNext={forwardOk}
+            onPrev={() => onAnchorChange(stepAnchor(scope, anchor, -1))}
+            onNext={() => onAnchorChange(stepAnchor(scope, anchor, 1))}
+            onPress={onLabelPress}
+          />
+        )}
         {!isCustom && forwardOk
           ? <ChevronButton icon="chevron-right" onPress={() => onAnchorChange(stepAnchor(scope, anchor, 1))} />
           : <View style={{ width: 36, height: 36 }} />}

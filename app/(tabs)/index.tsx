@@ -3,6 +3,8 @@ import { View, Text, FlatList, Pressable } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { startOfDay, endOfDay } from 'date-fns';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { listExpenses, sumByCategoryInBase, type ExpenseWithCategory } from '../../src/repositories/expenses';
 import { ExpenseRow } from '../../src/components/ExpenseRow';
 import { EmptyState } from '../../src/components/EmptyState';
@@ -11,8 +13,11 @@ import { CategoryPieChart, type Slice } from '../../src/components/charts/Catego
 import { useSettings } from '../../src/stores/settings';
 import { useFxRates } from '../../src/stores/fxRates';
 import { rateLookup, RATE_SCALE } from '../../src/lib/fx';
-import { scopeRange, type Scope } from '../../src/lib/dates';
+import { scopeRange, stepAnchor, canGoForward, type Scope } from '../../src/lib/dates';
 import { theme } from '../../src/theme';
+
+const SWIPE_DX = 50;
+const SWIPE_VX = 350;
 
 export default function Home() {
   const displayCurrency = useSettings(s => s.displayCurrency);
@@ -58,7 +63,31 @@ export default function Home() {
   const toDisplay = (baseCents: number) => Math.round((baseCents * eurToDisplay) / RATE_SCALE);
   const displaySlices: Slice[] = slices.map(s => ({ ...s, total: toDisplay(s.total) }));
 
+  function goPrev() {
+    if (scope === 'custom') return;
+    setAnchor(stepAnchor(scope, anchor, -1));
+  }
+  function goNext() {
+    if (scope === 'custom') return;
+    if (!canGoForward(scope, anchor, weekStart)) return;
+    setAnchor(stepAnchor(scope, anchor, 1));
+  }
+
+  const swipe = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .failOffsetY([-15, 15])
+    .enabled(scope !== 'custom')
+    .onEnd((e) => {
+      'worklet';
+      if (e.translationX <= -SWIPE_DX || e.velocityX <= -SWIPE_VX) {
+        runOnJS(goNext)();
+      } else if (e.translationX >= SWIPE_DX || e.velocityX >= SWIPE_VX) {
+        runOnJS(goPrev)();
+      }
+    });
+
   return (
+    <GestureDetector gesture={swipe}>
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <FlatList
         data={items}
@@ -98,5 +127,6 @@ export default function Home() {
         </Pressable>
       </Link>
     </View>
+    </GestureDetector>
   );
 }

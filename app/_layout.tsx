@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useState } from 'react';
 import { useRunMigrations } from '../src/db/migrate';
 import { seedIfEmpty } from '../src/db/seed';
@@ -33,19 +34,21 @@ export default function RootLayout() {
   if (!success || !seeded || !settingsLoaded || !fxLoaded) return <View><Text>Loading…</Text></View>;
 
   return (
-    <Stack screenOptions={{
-      headerShown: false,
-      headerStyle: { backgroundColor: theme.colors.bg },
-      headerTintColor: theme.colors.text,
-      headerTitleStyle: { color: theme.colors.text },
-      contentStyle: { backgroundColor: theme.colors.bg },
-    }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="expense/new" options={{ presentation: 'modal', headerShown: true, title: 'New expense' }} />
-      <Stack.Screen name="expense/[id]" options={{ presentation: 'modal', headerShown: true, title: 'Edit expense' }} />
-      <Stack.Screen name="category/index" options={{ headerShown: true, title: 'Categories' }} />
-      <Stack.Screen name="category/edit"  options={{ presentation: 'modal', headerShown: true, title: 'Edit category' }} />
-      <Stack.Screen name="settings/data" options={{ headerShown: true, title: 'Data' }} />
-    </Stack>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <Stack screenOptions={{
+        headerShown: false,
+        headerStyle: { backgroundColor: theme.colors.bg },
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: { color: theme.colors.text },
+        contentStyle: { backgroundColor: theme.colors.bg },
+      }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="expense/new" options={{ presentation: 'modal', headerShown: true, title: 'New expense' }} />
+        <Stack.Screen name="expense/[id]" options={{ presentation: 'modal', headerShown: true, title: 'Edit expense' }} />
+        <Stack.Screen name="category/index" options={{ headerShown: true, title: 'Categories' }} />
+        <Stack.Screen name="category/edit"  options={{ presentation: 'modal', headerShown: true, title: 'Edit category' }} />
+        <Stack.Screen name="settings/data" options={{ headerShown: true, title: 'Data' }} />
+      </Stack>
+    </GestureHandlerRootView>
   );
 }

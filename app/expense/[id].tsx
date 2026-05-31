@@ -5,6 +5,7 @@ import { AmountInput } from '../../src/components/AmountInput';
 import { DateField } from '../../src/components/DateField';
 import { CategoryQuickGrid } from '../../src/components/CategoryQuickGrid';
 import { CategoryPickerSheet } from '../../src/components/CategoryPickerSheet';
+import { TagPicker } from '../../src/components/TagPicker';
 import { parseAmountToCents } from '../../src/lib/currency';
 import { listExpenses, updateExpense, deleteExpense } from '../../src/repositories/expenses';
 import { getCategory, listTopCategoriesByUsage } from '../../src/repositories/categories';
@@ -25,6 +26,7 @@ export default function EditExpense() {
   const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(displayCurrency);
   const [category, setCategory] = useState<Category | null>(null);
   const [note, setNote] = useState('');
+  const [tagId, setTagId] = useState<number | null>(null);
   const [date, setDate] = useState(new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [topCategories, setTopCategories] = useState<Category[]>([]);
@@ -41,6 +43,7 @@ export default function EditExpense() {
       if (!found) return router.back();
       setAmount((found.amountCents / 100).toFixed(2));
       setNote(found.note ?? '');
+      setTagId(found.tagId ?? null);
       setDate(new Date(found.occurredAt));
       // currency column is NOT NULL — guard for hand-edited DBs only.
       setEntryCurrency(isCurrencyCode(found.currency) ? found.currency : 'EUR');
@@ -66,6 +69,7 @@ export default function EditExpense() {
       rateToBaseX1e6,
       categoryId: category.id,
       note: note || null,
+      tagId,
       occurredAt: date,
     });
     router.back();
@@ -103,6 +107,8 @@ export default function EditExpense() {
         placeholderTextColor={theme.colors.textMuted}
         style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md, borderRadius: theme.radius.md, color: theme.colors.text }}
       />
+
+      <TagPicker selectedTagId={tagId} onChange={setTagId} />
 
       <Pressable onPress={save} style={{ backgroundColor: theme.colors.primary, padding: theme.spacing.md, borderRadius: theme.radius.md, alignItems: 'center' }}>
         <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Save changes</Text>

@@ -117,6 +117,7 @@ export default function Stats() {
       setIsInProgress(current);
     })();
     return () => { cancelled = true; };
+    // rates/displayCurrency intentionally excluded: currency conversion is done at render time, not in this effect.
   }, [scope, anchor.getTime(), weekStart]));
 
   const eurToDisplay = rateLookup(rates, displayCurrency);
@@ -143,6 +144,8 @@ export default function Stats() {
         onAnchorChange={setAnchor}
         scopes={STATS_SCOPES}
       />
+      {/* currentBase/previousBase exist solely for this empty-state gate; they equal the
+          tails of currSeries/prevSeries (same amountInBaseCents over the same rows). */}
       {currentBase === 0 && previousBase === 0 ? (
         <View style={{
           padding: theme.spacing.md,

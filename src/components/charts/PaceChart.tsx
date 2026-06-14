@@ -47,6 +47,7 @@ export function PaceChart({
 
   // Geometry. X domain = max period length so the two lines align by elapsed day.
   const drawnCurrent = currentDisplay.slice(0, todayIndex + 1);
+  const endIdx = drawnCurrent.length - 1; // last drawn point of the current line
   const maxLen = Math.max(currentDisplay.length, previousDisplay.length, 1);
   const maxC = Math.max(1, ...drawnCurrent, ...previousDisplay); // display cents
   const niceMax = Math.ceil(maxC / 100 / 10) * 10 || 10;          // whole currency units
@@ -92,10 +93,11 @@ export function PaceChart({
 
             {drawnCurrent.length > 0 && (
               <>
+                {/* Today marker only while the period is in progress — a completed period has no "today". */}
                 {isInProgress && (
-                  <Line x1={x(todayIndex)} y1={0} x2={x(todayIndex)} y2={PLOT_HEIGHT} stroke={theme.colors.text} strokeWidth={1} strokeDasharray="2 3" opacity={0.4} />
+                  <Line x1={x(endIdx)} y1={0} x2={x(endIdx)} y2={PLOT_HEIGHT} stroke={theme.colors.text} strokeWidth={1} strokeDasharray="2 3" opacity={0.4} />
                 )}
-                <Circle cx={x(todayIndex)} cy={y(currentTotalDisplay)} r={3.5} fill={theme.colors.primary} />
+                <Circle cx={x(endIdx)} cy={y(drawnCurrent[endIdx])} r={3.5} fill={theme.colors.primary} />
               </>
             )}
           </Svg>

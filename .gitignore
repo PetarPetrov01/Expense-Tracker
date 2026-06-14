@@ -56,3 +56,6 @@ build-apk.log
 
 # personal data imports (contain financial data — never commit)
 expense-tracker-import*.json
+
+# superpowers brainstorm visual-companion scratch
+.superpowers/

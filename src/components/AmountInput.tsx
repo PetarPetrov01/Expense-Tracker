@@ -13,11 +13,13 @@ export function AmountInput({
   onChange,
   currency,
   onCurrencyChange,
+  autoFocus,
 }: {
   value: string;
   onChange: (v: string) => void;
   currency: CurrencyCode;
   onCurrencyChange: (c: CurrencyCode) => void;
+  autoFocus?: boolean;
 }) {
   const [draft, setDraft] = useState(value);
   // Tracks the last string we have authoritatively shown — either emitted upward via
@@ -70,6 +72,7 @@ export function AmountInput({
         value={draft}
         onChangeText={handleChangeText}
         onBlur={handleBlur}
+        autoFocus={autoFocus}
         placeholder="0.00"
         placeholderTextColor={theme.colors.textMuted}
         keyboardType="decimal-pad"

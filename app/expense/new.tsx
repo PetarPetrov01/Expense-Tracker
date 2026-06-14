@@ -83,12 +83,14 @@ export default function NewExpense() {
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
       contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg, paddingBottom: theme.spacing.xl * 2 }}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       <AmountInput
         value={amount}
         onChange={setAmount}
         currency={entryCurrency}
         onCurrencyChange={setEntryCurrency}
+        autoFocus
       />
 
       <CategoryQuickGrid

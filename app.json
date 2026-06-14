@@ -8,6 +8,7 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "backgroundColor": "#0f172a",
+    "icon": "./assets/images/icon.png",
     "android": {
       "package": "com.expensetracker.app",
       "backgroundColor": "#0f172a",
@@ -16,12 +17,22 @@
       },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundColor": "#10b981"
+        "monochromeImage": "./assets/images/android-icon-monochrome.png",
+        "backgroundColor": "#0f172a"
       }
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#0f172a"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

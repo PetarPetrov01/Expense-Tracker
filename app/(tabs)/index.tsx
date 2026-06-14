@@ -78,8 +78,10 @@ export default function Home() {
         })
       );
     });
+  // displayCurrency must be here: slices store already-converted amounts, so they have to
+  // be recomputed when the display currency changes (otherwise the pie shows stale values).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, anchor.getTime(), weekStart, customStartMs, customEndMs, rates]));
+  }, [scope, anchor.getTime(), weekStart, customStartMs, customEndMs, rates, displayCurrency]));
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>

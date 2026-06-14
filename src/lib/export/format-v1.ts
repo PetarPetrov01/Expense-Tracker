@@ -18,6 +18,10 @@ export const ExportV1TagSchema = z.object({
 export const ExportV1ExpenseSchema = z.object({
   contentHash: z.string().regex(/^sha1:[0-9a-f]{40}$/),
   amountCents: z.number().int().nonnegative(),
+  // Per-expense currency + snapshotted rate to base (EUR). Added in formatVersion 2.
+  // v1 backups omit these; they default to EUR @ 1:1, which matches how v1 stored amounts.
+  currency: z.string().min(1).default('EUR'),
+  rateToBaseX1e6: z.number().int().positive().default(1_000_000),
   categoryStableId: z.string().min(1),
   tagStableId: z.string().min(1).nullable().default(null),
   note: z.string().nullable(),
@@ -27,7 +31,8 @@ export const ExportV1ExpenseSchema = z.object({
 
 export const ExportV1Schema = z.object({
   format: z.literal('expense-tracker-export'),
-  formatVersion: z.literal(1),
+  // Accept v1 (no per-expense currency) and v2 (with it). migrateToCurrent rejects newer.
+  formatVersion: z.union([z.literal(1), z.literal(2)]),
   appVersion: z.string().min(1),
   exportedAt: z.string().datetime(),
   currency: z.string().min(1),
@@ -41,4 +46,4 @@ export type ExportV1Tag = z.infer<typeof ExportV1TagSchema>;
 export type ExportV1Expense = z.infer<typeof ExportV1ExpenseSchema>;
 export type ExportV1 = z.infer<typeof ExportV1Schema>;
 
-export const CURRENT_FORMAT_VERSION = 1 as const;
+export const CURRENT_FORMAT_VERSION = 2 as const;

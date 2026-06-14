@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { Tag } from '../db/schema';
@@ -17,6 +17,9 @@ export function TagPicker({
   const [tags, setTags] = useState<Tag[]>([]);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
+  // onSubmitEditing and onBlur can both fire for one entry; this guards against the
+  // resulting double-submit (which could otherwise create duplicate tags).
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     listTopTagsByUsage({ sinceDays: 3650, limit: 100 }).then(setTags);
@@ -30,12 +33,20 @@ export function TagPicker({
   });
 
   async function submitNew() {
-    const tag = await getOrCreateTag(draft).catch(() => null);
-    setDraft('');
-    setAdding(false);
-    if (!tag) return;
-    setTags(prev => (prev.some(t => t.id === tag.id) ? prev : [tag, ...prev]));
-    onChange(tag.id);
+    if (submittingRef.current) return;
+    const name = draft.trim();
+    if (!name) { setDraft(''); setAdding(false); return; }
+    submittingRef.current = true;
+    try {
+      const tag = await getOrCreateTag(name).catch(() => null);
+      setDraft('');
+      setAdding(false);
+      if (!tag) return;
+      setTags(prev => (prev.some(t => t.id === tag.id) ? prev : [tag, ...prev]));
+      onChange(tag.id);
+    } finally {
+      submittingRef.current = false;
+    }
   }
 
   return (

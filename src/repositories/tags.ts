@@ -1,4 +1,4 @@
-import { db, schema } from '../db/client';
+import { db, schema, runInTransaction } from '../db/client';
 import { and, asc, eq, gte, sql } from 'drizzle-orm';
 import type { Tag } from '../db/schema';
 import { generateUserStableId } from '../lib/export/stable-id';
@@ -48,12 +48,15 @@ export async function listTopTagsByUsage(opts: {
 export async function getOrCreateTag(rawName: string): Promise<Tag> {
   const name = normalizeTagName(rawName);
   if (!name) throw new Error('Tag name cannot be empty');
-  const target = name.toLowerCase();
-  const all = await db.select().from(schema.tags);
-  const existing = all.find(t => t.name.trim().toLowerCase() === target);
-  if (existing) return existing;
-  const [row] = await db.insert(schema.tags)
-    .values({ name, stableId: generateUserStableId(), createdAt: new Date() })
-    .returning();
-  return row;
+  // Match (and insert) atomically so a rapid double-submit can't create duplicate tags.
+  return runInTransaction(async () => {
+    const existing = await db.select().from(schema.tags)
+      .where(sql`lower(trim(${schema.tags.name})) = lower(${name})`)
+      .limit(1);
+    if (existing[0]) return existing[0];
+    const [row] = await db.insert(schema.tags)
+      .values({ name, stableId: generateUserStableId(), createdAt: new Date() })
+      .returning();
+    return row;
+  });
 }

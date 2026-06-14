@@ -8,12 +8,13 @@ import {
   type ExpenseWithCategory,
 } from '../../src/repositories/expenses';
 import { PeriodScope } from '../../src/components/PeriodScope';
-import { DeltaHeader } from '../../src/components/DeltaHeader';
+import { PaceChart } from '../../src/components/charts/PaceChart';
 import { CategoryMoversList, type Mover } from '../../src/components/CategoryMoversList';
 import { PeriodBarChart, type Bar } from '../../src/components/charts/PeriodBarChart';
+import { buildCumulativeSeries, comparePace, paceTodayIndex, type CumulativePoint } from '../../src/lib/pace';
 import { TopExpensesList } from '../../src/components/TopExpensesList';
 import { EmptyState } from '../../src/components/EmptyState';
-import { scopeRange, stepAnchor, lastNBuckets, type Scope } from '../../src/lib/dates';
+import { scopeRange, stepAnchor, lastNBuckets, isAtCurrent, type Scope } from '../../src/lib/dates';
 import { useSettings } from '../../src/stores/settings';
 import { useFxRates } from '../../src/stores/fxRates';
 import { rateLookup, RATE_SCALE, amountInBaseCents } from '../../src/lib/fx';
@@ -33,6 +34,10 @@ export default function Stats() {
   const [movers, setMovers] = useState<Mover[]>([]);
   const [trendBars, setTrendBars] = useState<Bar[]>([]);
   const [topExpenses, setTopExpenses] = useState<ExpenseWithCategory[]>([]);
+  const [currSeries, setCurrSeries] = useState<CumulativePoint[]>([]);
+  const [prevSeries, setPrevSeries] = useState<CumulativePoint[]>([]);
+  const [todayIndex, setTodayIndex] = useState(0);
+  const [isInProgress, setIsInProgress] = useState(true);
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
@@ -41,12 +46,13 @@ export default function Stats() {
       const prevAnchor = stepAnchor(scope, anchor, -1);
       const prev = scopeRange(scope, prevAnchor, weekStart);
 
-      const [currTotal, prevTotal, currCats, prevCats, periodExpenses] = await Promise.all([
+      const [currTotal, prevTotal, currCats, prevCats, periodExpenses, prevExpenses] = await Promise.all([
         sumExpensesInBase(curr.start, curr.end),
         sumExpensesInBase(prev.start, prev.end),
         sumByCategoryInBase(curr.start, curr.end),
         sumByCategoryInBase(prev.start, prev.end),
         listExpenses({ start: curr.start, end: curr.end }),
+        listExpenses({ start: prev.start, end: prev.end }),
       ]);
 
       const buckets = lastNBuckets(scope, 6, anchor, weekStart);
@@ -93,24 +99,37 @@ export default function Stats() {
         .sort((a, b) => amountInBaseCents(b) - amountInBaseCents(a))
         .slice(0, 5);
 
+      const currentSeries = buildCumulativeSeries(periodExpenses, curr.start, curr.end);
+      const previousSeries = buildCumulativeSeries(prevExpenses, prev.start, prev.end);
+      const now = new Date();
+      const current = isAtCurrent(scope, anchor, weekStart, now);
+      const tIndex = paceTodayIndex(curr.start, curr.end, current, now);
+
       if (cancelled) return;
       setCurrentBase(currTotal);
       setPreviousBase(prevTotal);
       setMovers(assembled);
       setTrendBars(bars);
       setTopExpenses(topFive);
+      setCurrSeries(currentSeries);
+      setPrevSeries(previousSeries);
+      setTodayIndex(tIndex);
+      setIsInProgress(current);
     })();
     return () => { cancelled = true; };
   }, [scope, anchor.getTime(), weekStart]));
 
   const eurToDisplay = rateLookup(rates, displayCurrency);
   const toDisplay = (baseCents: number) => Math.round((baseCents * eurToDisplay) / RATE_SCALE);
-  const currentDisplay = toDisplay(currentBase);
-  const previousDisplay = toDisplay(previousBase);
   const displayTrendBars: Bar[] = trendBars.map(b => ({
     label: b.label,
     valueCents: toDisplay(b.valueCents),
   }));
+  const currentDisplay = currSeries.map(p => toDisplay(p.cumulativeBaseCents));
+  const previousDisplay = prevSeries.map(p => toDisplay(p.cumulativeBaseCents));
+  const cmp = comparePace(currSeries, prevSeries, todayIndex);
+  const currentTotalDisplay = toDisplay(cmp.currentAtPoint);
+  const deltaDisplay = cmp.prevAtPoint === null ? null : currentTotalDisplay - toDisplay(cmp.prevAtPoint);
 
   return (
     <ScrollView
@@ -134,11 +153,15 @@ export default function Stats() {
         </View>
       ) : (
         <>
-          <DeltaHeader
+          <PaceChart
+            scope={scope}
             currentDisplay={currentDisplay}
             previousDisplay={previousDisplay}
+            todayIndex={todayIndex}
+            isInProgress={isInProgress}
+            currentTotalDisplay={currentTotalDisplay}
+            deltaDisplay={deltaDisplay}
             displayCurrency={displayCurrency}
-            hasPrevious={previousBase > 0}
           />
           <CategoryMoversList
             movers={movers}

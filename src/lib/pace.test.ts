@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCumulativeSeries } from './pace';
-import { comparePace, paceTodayIndex } from './pace';
+import { buildCumulativeSeries, comparePace, paceTodayIndex } from './pace';
 
 const RATE = 1_000_000; // 1:1 → base cents == amountCents
 
@@ -120,6 +119,18 @@ describe('comparePace', () => {
       currentAtPoint: 30,
       prevAtPoint: null,
       deltaCents: null,
+    });
+  });
+
+  it('handles the first-day boundary (todayIndex 0)', () => {
+    const prev = [
+      { dayIndex: 0, cumulativeBaseCents: 5 },
+      { dayIndex: 1, cumulativeBaseCents: 15 },
+    ];
+    expect(comparePace(current, prev, 0)).toEqual({
+      currentAtPoint: 10,
+      prevAtPoint: 5,
+      deltaCents: 5,
     });
   });
 });

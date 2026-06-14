@@ -50,6 +50,7 @@ export type PaceComparison = {
 export function paceTodayIndex(start: Date, end: Date, isCurrent: boolean, now: Date): number {
   const startDay = startOfDay(start);
   const lastIndex = differenceInCalendarDays(startOfDay(end), startDay);
+  // `now` is only consulted for the in-progress period; a completed period returns full length.
   if (!isCurrent) return lastIndex;
   const idx = differenceInCalendarDays(startOfDay(now), startDay);
   return Math.min(Math.max(idx, 0), lastIndex);
@@ -57,6 +58,9 @@ export function paceTodayIndex(start: Date, end: Date, isCurrent: boolean, now: 
 
 // Read both cumulative series at the same elapsed index. When the previous period is
 // shorter than todayIndex, clamp to its final total (e.g. comparing day 30 vs a 28-day Feb).
+// The empty-`current` fallback (currentAtPoint = 0) is only defensive: callers feed series from
+// buildCumulativeSeries, which always yields >=1 point for a valid range. A period with no spend
+// is an all-zeros series, not an empty one, so in practice current is never empty.
 export function comparePace(
   current: CumulativePoint[],
   previous: CumulativePoint[],

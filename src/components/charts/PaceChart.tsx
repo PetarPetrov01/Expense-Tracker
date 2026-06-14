@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, type LayoutChangeEvent } from 'react-native';
-import Svg, { Polyline, Line, Circle } from 'react-native-svg';
+import Svg, { Polyline, Line, Circle, Text as SvgText } from 'react-native-svg';
+import type { AxisTick } from '../../lib/pace';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { theme } from '../../theme';
 import { formatAmount, type CurrencyCode } from '../../lib/currency';
@@ -20,6 +21,7 @@ export function PaceChart({
   currentTotalDisplay,
   deltaDisplay,
   displayCurrency,
+  xLabels,
 }: {
   scope: Scope;
   currentDisplay: number[];   // cumulative display cents per day (current period, full length)
@@ -29,6 +31,7 @@ export function PaceChart({
   currentTotalDisplay: number;
   deltaDisplay: number | null; // null = no previous data
   displayCurrency: CurrencyCode;
+  xLabels: AxisTick[];
 }) {
   const [width, setWidth] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
@@ -69,18 +72,26 @@ export function PaceChart({
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <MaterialCommunityIcons name={arrow} size={16} color={deltaColor} />
-          <Text style={{ color: deltaColor, fontSize: 13, fontWeight: '600' }}>
-            {flat ? 'same' : `${formatAmount(Math.abs(deltaDisplay), displayCurrency)} ${up ? 'more' : 'less'}`}
-          </Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
-            {isInProgress ? `than this point last ${noun}` : `than last ${noun}`}
-          </Text>
+          {flat ? (
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              {isInProgress ? `same as this point last ${noun}` : `same as last ${noun}`}
+            </Text>
+          ) : (
+            <>
+              <Text style={{ color: deltaColor, fontSize: 13, fontWeight: '600' }}>
+                {`${formatAmount(Math.abs(deltaDisplay), displayCurrency)} ${up ? 'more' : 'less'}`}
+              </Text>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+                {isInProgress ? `than this point last ${noun}` : `than last ${noun}`}
+              </Text>
+            </>
+          )}
         </View>
       )}
 
       <View onLayout={onLayout} style={{ marginTop: theme.spacing.sm }}>
         {width > 0 && (
-          <Svg width={width} height={PLOT_HEIGHT}>
+          <Svg width={width} height={PLOT_HEIGHT + 18}>
             <Line x1={PAD} y1={PLOT_HEIGHT} x2={width - PAD} y2={PLOT_HEIGHT} stroke={theme.colors.border} strokeWidth={1} />
 
             {previousDisplay.length > 1 && (
@@ -100,6 +111,19 @@ export function PaceChart({
                 <Circle cx={x(endIdx)} cy={y(drawnCurrent[endIdx])} r={3.5} fill={theme.colors.primary} />
               </>
             )}
+
+            {xLabels.map(t => (
+              <SvgText
+                key={t.index}
+                x={x(t.index)}
+                y={PLOT_HEIGHT + 13}
+                fill={theme.colors.textMuted}
+                fontSize={9}
+                textAnchor="middle"
+              >
+                {t.label}
+              </SvgText>
+            ))}
           </Svg>
         )}
       </View>

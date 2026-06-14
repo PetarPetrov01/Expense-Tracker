@@ -11,7 +11,7 @@ import { PeriodScope } from '../../src/components/PeriodScope';
 import { PaceChart } from '../../src/components/charts/PaceChart';
 import { CategoryMoversList, type Mover } from '../../src/components/CategoryMoversList';
 import { PeriodBarChart, type Bar } from '../../src/components/charts/PeriodBarChart';
-import { buildCumulativeSeries, comparePace, paceTodayIndex, type CumulativePoint } from '../../src/lib/pace';
+import { buildCumulativeSeries, comparePace, paceTodayIndex, paceAxisTicks, type CumulativePoint } from '../../src/lib/pace';
 import { TopExpensesList } from '../../src/components/TopExpensesList';
 import { EmptyState } from '../../src/components/EmptyState';
 import { scopeRange, stepAnchor, lastNBuckets, isAtCurrent, type Scope } from '../../src/lib/dates';
@@ -131,6 +131,7 @@ export default function Stats() {
   const cmp = comparePace(currSeries, prevSeries, todayIndex);
   const currentTotalDisplay = toDisplay(cmp.currentAtPoint);
   const deltaDisplay = cmp.prevAtPoint === null ? null : currentTotalDisplay - toDisplay(cmp.prevAtPoint);
+  const axisTicks = paceAxisTicks(scope, scopeRange(scope, anchor, weekStart).start, currSeries.length);
 
   return (
     <ScrollView
@@ -165,6 +166,7 @@ export default function Stats() {
             currentTotalDisplay={currentTotalDisplay}
             deltaDisplay={deltaDisplay}
             displayCurrency={displayCurrency}
+            xLabels={axisTicks}
           />
           <CategoryMoversList
             movers={movers}

@@ -1,4 +1,5 @@
-import { differenceInCalendarDays, startOfDay } from 'date-fns';
+import { differenceInCalendarDays, startOfDay, addDays, format } from 'date-fns';
+import type { Scope } from './dates';
 import { amountInBaseCents } from './fx';
 
 // Minimal shape this module needs. `ExpenseWithCategory` from listExpenses satisfies it.
@@ -75,4 +76,36 @@ export function comparePace(
   const prevIdx = Math.min(Math.max(todayIndex, 0), previous.length - 1);
   const prevAtPoint = previous[prevIdx].cumulativeBaseCents;
   return { currentAtPoint, prevAtPoint, deltaCents: currentAtPoint - prevAtPoint };
+}
+
+export type AxisTick = { index: number; label: string };
+
+// Scope-adaptive x-axis ticks for the pace chart. `start` is the period's first day and
+// `dayCount` the number of days in the period. Kept small so labels never crowd:
+// single-letter weekdays for a week, ~5 day-number ticks for a month, month abbreviations
+// for a year. Pure — formatting only, no accumulation.
+export function paceAxisTicks(scope: Scope, start: Date, dayCount: number): AxisTick[] {
+  if (dayCount <= 0) return [];
+  if (scope === 'week') {
+    return Array.from({ length: dayCount }, (_, i) => ({
+      index: i,
+      label: format(addDays(start, i), 'EEEEE'), // single-letter weekday
+    }));
+  }
+  if (scope === 'year') {
+    const ticks: AxisTick[] = [];
+    for (let i = 0; i < dayCount; i++) {
+      const d = addDays(start, i);
+      if (d.getDate() === 1) ticks.push({ index: i, label: format(d, 'MMM') });
+    }
+    return ticks;
+  }
+  // month (and any other day-granular scope): ~5 evenly spaced day-number ticks
+  const count = Math.min(5, dayCount);
+  const ticks: AxisTick[] = [];
+  for (let t = 0; t < count; t++) {
+    const i = count <= 1 ? 0 : Math.round((t / (count - 1)) * (dayCount - 1));
+    ticks.push({ index: i, label: format(addDays(start, i), 'd') });
+  }
+  return ticks;
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCumulativeSeries, comparePace, paceTodayIndex } from './pace';
+import { buildCumulativeSeries, comparePace, paceTodayIndex, paceAxisTicks } from './pace';
 
 const RATE = 1_000_000; // 1:1 → base cents == amountCents
 
@@ -132,5 +132,32 @@ describe('comparePace', () => {
       prevAtPoint: 5,
       deltaCents: 5,
     });
+  });
+});
+
+describe('paceAxisTicks', () => {
+  it('returns one single-letter weekday label per day for week scope', () => {
+    const ticks = paceAxisTicks('week', new Date(2026, 0, 5), 7); // Mon Jan 5 2026
+    expect(ticks).toHaveLength(7);
+    expect(ticks[0].index).toBe(0);
+    expect(ticks.every(t => t.label.length >= 1)).toBe(true);
+  });
+
+  it('returns ~5 day-number ticks spanning the month', () => {
+    const ticks = paceAxisTicks('month', new Date(2026, 0, 1), 31);
+    expect(ticks).toHaveLength(5);
+    expect(ticks[0]).toEqual({ index: 0, label: '1' });
+    expect(ticks[ticks.length - 1]).toEqual({ index: 30, label: '31' });
+  });
+
+  it('returns month abbreviations on the 1st of each month for year scope', () => {
+    const ticks = paceAxisTicks('year', new Date(2026, 0, 1), 365);
+    expect(ticks).toHaveLength(12);
+    expect(ticks[0]).toEqual({ index: 0, label: 'Jan' });
+    expect(ticks[1].label).toBe('Feb');
+  });
+
+  it('returns empty for non-positive dayCount', () => {
+    expect(paceAxisTicks('month', new Date(2026, 0, 1), 0)).toEqual([]);
   });
 });

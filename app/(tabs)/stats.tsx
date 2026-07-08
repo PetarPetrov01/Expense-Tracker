@@ -173,6 +173,8 @@ export default function Stats() {
             displayCurrency={displayCurrency}
             hasPrevious={previousBase > 0}
             toDisplay={toDisplay}
+            scope={scope}
+            anchor={anchor}
           />
           <PeriodBarChart bars={displayTrendBars} title="Last 6 months" />
           <TopExpensesList

@@ -1,8 +1,10 @@
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { router } from 'expo-router';
 import { theme } from '../theme';
 import { CategoryIcon } from './CategoryIcon';
 import { Sparkline } from './Sparkline';
 import { formatAmount, type CurrencyCode } from '../lib/currency';
+import type { Scope } from '../lib/dates';
 
 export type Mover = {
   categoryId: number;
@@ -19,11 +21,15 @@ export function CategoryMoversList({
   displayCurrency,
   hasPrevious,
   toDisplay,
+  scope,
+  anchor,
 }: {
   movers: Mover[];
   displayCurrency: CurrencyCode;
   hasPrevious: boolean;
   toDisplay: (cents: number) => number;
+  scope: Scope;
+  anchor: Date;
 }) {
   if (!hasPrevious) return null;
 
@@ -88,6 +94,8 @@ export function CategoryMoversList({
               mover={m}
               displayCurrency={displayCurrency}
               toDisplay={toDisplay}
+              scope={scope}
+              anchor={anchor}
             />
           ))}
         </View>
@@ -101,6 +109,8 @@ export function CategoryMoversList({
               mover={m}
               displayCurrency={displayCurrency}
               toDisplay={toDisplay}
+              scope={scope}
+              anchor={anchor}
             />
           ))}
         </View>
@@ -110,11 +120,13 @@ export function CategoryMoversList({
 }
 
 function CategoryMoverRow({
-  mover, displayCurrency, toDisplay,
+  mover, displayCurrency, toDisplay, scope, anchor,
 }: {
   mover: Mover & { delta: number };
   displayCurrency: CurrencyCode;
   toDisplay: (cents: number) => number;
+  scope: Scope;
+  anchor: Date;
 }) {
   const up = mover.delta > 0;
   const isNew = mover.previousCents === 0;
@@ -139,7 +151,17 @@ function CategoryMoverRow({
   const historyDisplay = mover.historyCents.map(toDisplay);
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+    <Pressable
+      onPress={() => router.push({
+        pathname: '/expenses/list',
+        params: {
+          categoryId: String(mover.categoryId),
+          scope,
+          anchor: String(anchor.getTime()),
+        },
+      })}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}
+    >
       <CategoryIcon icon={mover.categoryIcon} color={mover.categoryColor} />
       <View style={{ flex: 1 }}>
         <Text style={{ color: theme.colors.text, fontSize: 14 }}>{mover.categoryName}</Text>
@@ -153,6 +175,6 @@ function CategoryMoverRow({
       <Text style={{ color: deltaColor, fontSize: 13, fontWeight: '600', minWidth: 56, textAlign: 'right' }}>
         {badge}
       </Text>
-    </View>
+    </Pressable>
   );
 }

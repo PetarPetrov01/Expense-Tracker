@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
-import { Link, useFocusEffect } from 'expo-router';
+import { Link, router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { startOfDay, endOfDay } from 'date-fns';
 import { listExpenses, sumByCategoryInBase, sumByCategoryAndTagInBase, type ExpenseWithCategory } from '../../src/repositories/expenses';
@@ -101,9 +101,26 @@ export default function Home() {
               onCustomRangeChange={setCustomRange}
             />
             <CategoryPieChart slices={slices} />
-            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginTop: theme.spacing.sm }}>
-              History
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: theme.spacing.sm }}>
+              <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>
+                History
+              </Text>
+              <Pressable
+                hitSlop={8}
+                onPress={() => router.push({
+                  pathname: '/expenses/list',
+                  params: {
+                    scope,
+                    anchor: String(anchor.getTime()),
+                    ...(scope === 'custom' && customRange
+                      ? { customStart: String(customRange.start.getTime()), customEnd: String(customRange.end.getTime()) }
+                      : {}),
+                  },
+                })}
+              >
+                <Text style={{ color: theme.colors.primary, fontSize: 14 }}>See all</Text>
+              </Pressable>
+            </View>
           </View>
         }
         ListEmptyComponent={

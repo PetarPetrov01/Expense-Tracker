@@ -75,6 +75,9 @@ export default function ExpenseListScreen() {
       ({ start, end } = scopeRange(scope, anchor, weekStart));
     }
     listExpenses({ start, end }).then(setItems);
+  // anchor and customRange object identities aren't stable; we depend on their
+  // getTime() values and ms primitives instead.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, anchor.getTime(), weekStart, customStartMs, customEndMs]));
 
   const filtered = useMemo(

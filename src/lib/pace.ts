@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, startOfDay, addDays, format } from 'date-fns';
+import { differenceInCalendarDays, differenceInCalendarMonths, startOfDay, startOfMonth, addDays, addMonths, format } from 'date-fns';
 import type { Scope } from './dates';
 import { amountInBaseCents } from './fx';
 
@@ -11,32 +11,69 @@ export type PaceInput = {
 
 export type CumulativePoint = { dayIndex: number; cumulativeBaseCents: number };
 
+// How wide one "step" is in per-step (non-cumulative) mode. Day-granular for week/month;
+// month-granular for year so the line stays readable (12 points, not 365).
+export type StepGranularity = 'day' | 'month';
+export function stepGranularity(scope: Scope): StepGranularity {
+  return scope === 'year' ? 'month' : 'day';
+}
+
+// Non-cumulative spend per step spanning [start, end] inclusive. For 'day' granularity each
+// entry is one calendar day; for 'month' each entry is one calendar month. Empty steps are 0.
+// Pure: amounts summed in base cents via amountInBaseCents; currency conversion happens elsewhere.
+export function buildStepSeries(
+  expenses: PaceInput[],
+  start: Date,
+  end: Date,
+  granularity: StepGranularity,
+): number[] {
+  const byMonth = granularity === 'month';
+  const anchor = byMonth ? startOfMonth(start) : startOfDay(start);
+  const stepOf = (d: Date) =>
+    byMonth
+      ? differenceInCalendarMonths(startOfMonth(d), anchor)
+      : differenceInCalendarDays(startOfDay(d), anchor);
+
+  const stepCount = stepOf(end) + 1;
+  if (stepCount <= 0) return [];
+
+  const perStep = new Array<number>(stepCount).fill(0);
+  for (const e of expenses) {
+    const idx = stepOf(new Date(e.occurredAt));
+    if (idx < 0 || idx >= stepCount) continue; // defensively ignore out-of-range rows
+    perStep[idx] += amountInBaseCents(e);
+  }
+  return perStep;
+}
+
 // Cumulative-by-day running total spanning [start, end] inclusive of both calendar days.
-// dayIndex 0 = the start day. Empty days repeat the prior cumulative. Pure: amounts are
-// summed in base cents via amountInBaseCents; currency conversion happens elsewhere.
+// dayIndex 0 = the start day. Empty days repeat the prior cumulative. Built as a running sum
+// over buildStepSeries('day') so daily bucketing has a single source of truth.
 export function buildCumulativeSeries(
   expenses: PaceInput[],
   start: Date,
   end: Date,
 ): CumulativePoint[] {
-  const startDay = startOfDay(start);
-  const dayCount = differenceInCalendarDays(startOfDay(end), startDay) + 1;
-  if (dayCount <= 0) return [];
-
-  const perDay = new Array<number>(dayCount).fill(0);
-  for (const e of expenses) {
-    const idx = differenceInCalendarDays(startOfDay(new Date(e.occurredAt)), startDay);
-    if (idx < 0 || idx >= dayCount) continue; // defensively ignore out-of-range rows
-    perDay[idx] += amountInBaseCents(e);
-  }
-
+  const perDay = buildStepSeries(expenses, start, end, 'day');
   const out: CumulativePoint[] = [];
   let running = 0;
-  for (let i = 0; i < dayCount; i++) {
+  for (let i = 0; i < perDay.length; i++) {
     running += perDay[i];
     out.push({ dayIndex: i, cumulativeBaseCents: running });
   }
   return out;
+}
+
+// Index of the in-progress step for per-step mode (mirrors paceTodayIndex but honours the
+// scope's granularity). Completed periods return the last step; the current period clamps
+// "now" into [0, lastIndex] so the current line stops at today/this month.
+export function stepTodayIndex(scope: Scope, start: Date, end: Date, isCurrent: boolean, now: Date): number {
+  if (stepGranularity(scope) === 'day') return paceTodayIndex(start, end, isCurrent, now);
+  const anchor = startOfMonth(start);
+  const lastIndex = differenceInCalendarMonths(startOfMonth(end), anchor);
+  if (!isCurrent) return lastIndex;
+  const idx = differenceInCalendarMonths(startOfMonth(now), anchor);
+  return Math.min(Math.max(idx, 0), lastIndex);
 }
 
 export type PaceComparison = {
@@ -108,4 +145,28 @@ export function paceAxisTicks(scope: Scope, start: Date, dayCount: number): Axis
     ticks.push({ index: i, label: format(addDays(start, i), 'd') });
   }
   return ticks;
+}
+
+// One human label per series index, for the scrubber tooltip. Day granularity → "d MMM"
+// (e.g. "14 Mar"); month granularity → "MMM" (e.g. "Mar"). `count` is the series length.
+export function pointLabels(start: Date, count: number, granularity: StepGranularity): string[] {
+  if (count <= 0) return [];
+  const byMonth = granularity === 'month';
+  const anchor = byMonth ? startOfMonth(start) : startOfDay(start);
+  return Array.from({ length: count }, (_, i) =>
+    byMonth ? format(addMonths(anchor, i), 'MMM') : format(addDays(anchor, i), 'd MMM'),
+  );
+}
+
+// X-axis ticks for per-step mode. Day-granular scopes reuse paceAxisTicks (one tick per day
+// domain). Year steps by month, so it gets one month-abbreviation label per step.
+export function stepAxisTicks(scope: Scope, start: Date, stepCount: number): AxisTick[] {
+  if (stepCount <= 0) return [];
+  if (stepGranularity(scope) === 'month') {
+    return Array.from({ length: stepCount }, (_, i) => ({
+      index: i,
+      label: format(addMonths(startOfMonth(start), i), 'MMM'),
+    }));
+  }
+  return paceAxisTicks(scope, start, stepCount);
 }

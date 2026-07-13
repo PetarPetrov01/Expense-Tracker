@@ -11,7 +11,7 @@ import { PeriodScope } from '../../src/components/PeriodScope';
 import { PaceChart } from '../../src/components/charts/PaceChart';
 import { CategoryMoversList, type Mover } from '../../src/components/CategoryMoversList';
 import { PeriodBarChart, type Bar } from '../../src/components/charts/PeriodBarChart';
-import { buildCumulativeSeries, comparePace, paceTodayIndex, paceAxisTicks, type CumulativePoint } from '../../src/lib/pace';
+import { buildCumulativeSeries, comparePace, paceTodayIndex, paceAxisTicks, buildStepSeries, stepTodayIndex, stepAxisTicks, stepGranularity, pointLabels, type CumulativePoint } from '../../src/lib/pace';
 import { TopExpensesList } from '../../src/components/TopExpensesList';
 import { EmptyState } from '../../src/components/EmptyState';
 import { scopeRange, stepAnchor, lastNBuckets, isAtCurrent, type Scope } from '../../src/lib/dates';
@@ -36,8 +36,12 @@ export default function Stats() {
   const [topExpenses, setTopExpenses] = useState<ExpenseWithCategory[]>([]);
   const [currSeries, setCurrSeries] = useState<CumulativePoint[]>([]);
   const [prevSeries, setPrevSeries] = useState<CumulativePoint[]>([]);
+  const [currStepBase, setCurrStepBase] = useState<number[]>([]);
+  const [prevStepBase, setPrevStepBase] = useState<number[]>([]);
+  const [stepIndex, setStepIndex] = useState(0);
   const [todayIndex, setTodayIndex] = useState(0);
   const [isInProgress, setIsInProgress] = useState(true);
+  const [chartScrubbing, setChartScrubbing] = useState(false);
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
@@ -101,9 +105,13 @@ export default function Stats() {
 
       const currentSeries = buildCumulativeSeries(periodExpenses, curr.start, curr.end);
       const previousSeries = buildCumulativeSeries(prevExpenses, prev.start, prev.end);
+      const gran = stepGranularity(scope);
+      const currentStep = buildStepSeries(periodExpenses, curr.start, curr.end, gran);
+      const previousStep = buildStepSeries(prevExpenses, prev.start, prev.end, gran);
       const now = new Date();
       const current = isAtCurrent(scope, anchor, weekStart, now);
       const tIndex = paceTodayIndex(curr.start, curr.end, current, now);
+      const sIndex = stepTodayIndex(scope, curr.start, curr.end, current, now);
 
       if (cancelled) return;
       setCurrentBase(currTotal);
@@ -113,6 +121,9 @@ export default function Stats() {
       setTopExpenses(topFive);
       setCurrSeries(currentSeries);
       setPrevSeries(previousSeries);
+      setCurrStepBase(currentStep);
+      setPrevStepBase(previousStep);
+      setStepIndex(sIndex);
       setTodayIndex(tIndex);
       setIsInProgress(current);
     })();
@@ -128,15 +139,23 @@ export default function Stats() {
   }));
   const currentDisplay = currSeries.map(p => toDisplay(p.cumulativeBaseCents));
   const previousDisplay = prevSeries.map(p => toDisplay(p.cumulativeBaseCents));
+  const stepCurrentDisplay = currStepBase.map(toDisplay);
+  const stepPreviousDisplay = prevStepBase.map(toDisplay);
   const cmp = comparePace(currSeries, prevSeries, todayIndex);
   const currentTotalDisplay = toDisplay(cmp.currentAtPoint);
   const deltaDisplay = cmp.prevAtPoint === null ? null : currentTotalDisplay - toDisplay(cmp.prevAtPoint);
-  const axisTicks = paceAxisTicks(scope, scopeRange(scope, anchor, weekStart).start, currSeries.length);
+  const periodStart = scopeRange(scope, anchor, weekStart).start;
+  const axisTicks = paceAxisTicks(scope, periodStart, currSeries.length);
+  const stepXLabels = stepAxisTicks(scope, periodStart, currStepBase.length);
+  const stepLabel = stepGranularity(scope) === 'month' ? 'Per month' : 'Per day';
+  const cumPointLabels = pointLabels(periodStart, currSeries.length, 'day');
+  const stepPointLabels = pointLabels(periodStart, currStepBase.length, stepGranularity(scope));
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
       contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}
+      scrollEnabled={!chartScrubbing}
     >
       <PeriodScope
         scope={scope}
@@ -167,6 +186,14 @@ export default function Stats() {
             deltaDisplay={deltaDisplay}
             displayCurrency={displayCurrency}
             xLabels={axisTicks}
+            pointLabels={cumPointLabels}
+            stepCurrentDisplay={stepCurrentDisplay}
+            stepPreviousDisplay={stepPreviousDisplay}
+            stepTodayIndex={stepIndex}
+            stepXLabels={stepXLabels}
+            stepPointLabels={stepPointLabels}
+            stepLabel={stepLabel}
+            onActiveChange={setChartScrubbing}
           />
           <CategoryMoversList
             movers={movers}

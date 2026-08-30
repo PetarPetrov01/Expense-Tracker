@@ -136,3 +136,11 @@ function formatBucketLabel(scope: Scope, d: Date): string {
   if (scope === 'month') return format(d, 'MMM');
   return format(d, 'yyyy');
 }
+
+// The date a newly-created expense should default to, given the period the user
+// is currently looking at. Only the day scope carries over — a past week, month
+// or year has no single obvious day. Returns null to mean "use now".
+export function preloadDateFor(scope: Scope, anchor: Date, now: Date = new Date()): Date | null {
+  if (scope !== 'day' || isSameDay(anchor, now)) return null;
+  return startOfDay(anchor);
+}

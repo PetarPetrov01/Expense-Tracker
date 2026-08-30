@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { AmountInput } from '../../src/components/AmountInput';
 import { DateField } from '../../src/components/DateField';
 import { CategoryQuickGrid } from '../../src/components/CategoryQuickGrid';
@@ -18,13 +18,19 @@ import type { CurrencyCode } from '../../src/lib/currency';
 import { theme } from '../../src/theme';
 
 export default function NewExpense() {
+  // Pushed by the Home FAB when you're browsing a past day, so the expense you
+  // forgot to log lands on the day you're looking at rather than today.
+  const params = useLocalSearchParams<{ date?: string }>();
   const displayCurrency = useSettings(s => s.displayCurrency);
   const [amount, setAmount] = useState('');
   const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(displayCurrency);
   const [category, setCategory] = useState<Category | null>(null);
   const [note, setNote] = useState('');
   const [tagId, setTagId] = useState<number | null>(null);
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState<Date>(() => {
+    const ms = Number(params.date);
+    return Number.isFinite(ms) && ms > 0 ? new Date(ms) : new Date();
+  });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [topCategories, setTopCategories] = useState<Category[]>([]);
 

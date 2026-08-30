@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
-import { Link, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { startOfDay, endOfDay } from 'date-fns';
 import { listExpenses, sumByCategoryInBase, sumByCategoryAndTagInBase, type ExpenseWithCategory } from '../../src/repositories/expenses';
@@ -11,7 +11,7 @@ import { CategoryPieChart, type Slice } from '../../src/components/charts/Catego
 import { useSettings } from '../../src/stores/settings';
 import { useFxRates } from '../../src/stores/fxRates';
 import { rateLookup, RATE_SCALE } from '../../src/lib/fx';
-import { scopeRange, type Scope } from '../../src/lib/dates';
+import { scopeRange, preloadDateFor, type Scope } from '../../src/lib/dates';
 import { theme } from '../../src/theme';
 
 export default function Home() {
@@ -128,17 +128,24 @@ export default function Home() {
         }
       />
 
-      <Link href="/expense/new" asChild>
-        <Pressable style={{
+      <Pressable
+        onPress={() => {
+          const preload = preloadDateFor(scope, anchor);
+          router.push({
+            pathname: '/expense/new',
+            params: preload ? { date: String(preload.getTime()) } : {},
+          });
+        }}
+        style={{
           position: 'absolute', right: 24, bottom: 24,
           width: 60, height: 60, borderRadius: 30,
           backgroundColor: theme.colors.primary,
           justifyContent: 'center', alignItems: 'center',
           elevation: 4,
-        }}>
-          <MaterialCommunityIcons name="plus" size={32} color="#fff" />
-        </Pressable>
-      </Link>
+        }}
+      >
+        <MaterialCommunityIcons name="plus" size={32} color="#fff" />
+      </Pressable>
     </View>
   );
 }
